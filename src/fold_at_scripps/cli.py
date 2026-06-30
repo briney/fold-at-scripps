@@ -57,6 +57,7 @@ def create_admin(
 
 
 async def _sync_catalog() -> None:
+    """Run the autobio-backed catalog sync and print the result."""
     source = AutobioToolSource()
     try:
         async with get_sessionmaker()() as session:

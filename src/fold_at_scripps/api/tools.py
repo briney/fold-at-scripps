@@ -31,7 +31,7 @@ async def get_tool(
     tool_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
     _: User = Depends(get_current_user),
-) -> ToolRead:
+) -> Tool:
     """Return a single enabled tool, including its input schema."""
     tool = await get_enabled_tool(session, tool_id)
     if tool is None:
