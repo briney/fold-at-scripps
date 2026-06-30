@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,7 +18,8 @@ runner = CliRunner()
 
 
 async def test_create_admin_creates_active_admin(db_session: AsyncSession) -> None:
-    result = runner.invoke(
+    result = await asyncio.to_thread(
+        runner.invoke,
         app,
         [
             "create-admin",
@@ -50,6 +53,7 @@ async def test_create_admin_rejects_duplicate(db_session: AsyncSession) -> None:
         "--display-name",
         "Boss",
     ]
-    assert runner.invoke(app, args).exit_code == 0
-    second = runner.invoke(app, args)
+    first = await asyncio.to_thread(runner.invoke, app, args)
+    assert first.exit_code == 0
+    second = await asyncio.to_thread(runner.invoke, app, args)
     assert second.exit_code == 1
