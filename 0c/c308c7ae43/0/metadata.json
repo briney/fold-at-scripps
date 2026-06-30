@@ -1,0 +1,104 @@
+{
+  "cli_version": "0.7.8",
+  "checkpoint_id": "0cc308c7ae43",
+  "session_id": "81efea97-4441-45df-9723-649c2ecd0b06",
+  "strategy": "manual-commit",
+  "created_at": "2026-06-30T17:24:05.296303726Z",
+  "branch": "main",
+  "checkpoints_count": 2,
+  "save_step_count": 1,
+  "files_touched": [
+    ".gitignore"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-opus-4-8[1m]",
+  "turn_id": "807678fa5140",
+  "checkpoint_transcript_start": 93,
+  "transcript_lines_at_start": 93,
+  "token_usage": {
+    "input_tokens": 90,
+    "cache_creation_tokens": 5722,
+    "cache_read_tokens": 273962,
+    "output_tokens": 4953,
+    "api_call_count": 5
+  },
+  "skill_events_version": 1,
+  "skill_events": [
+    {
+      "id": "claude-skill-toolu_01Vo4QMR6GdrvgNqC7VftdCo",
+      "event_type": "tool_invocation",
+      "skill": {
+        "name": "superpowers:brainstorming"
+      },
+      "source": {
+        "agent": "claude-code",
+        "signal": "skill_tool_use",
+        "confidence": "explicit"
+      },
+      "turn_id": "807678fa5140",
+      "transcript_anchor": {
+        "unit": "line",
+        "start": 19,
+        "end": 20,
+        "entry_ids": [
+          "1e45b4f2-17e5-4957-98e7-c67613a11c0d"
+        ],
+        "tool_use_id": "toolu_01Vo4QMR6GdrvgNqC7VftdCo"
+      },
+      "native": {
+        "tool_name": "Skill",
+        "tool_use_id": "toolu_01Vo4QMR6GdrvgNqC7VftdCo"
+      },
+      "collapse": {
+        "target": "tool_pair",
+        "label": "Skill: superpowers:brainstorming",
+        "default_collapsed": true
+      }
+    }
+  ],
+  "session_metrics": {
+    "turn_count": 5
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-06-30T17:24:05.291049303Z",
+    "agent_lines": 12,
+    "agent_removed": 0,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 12,
+    "total_lines_changed": 12,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 941,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        ".claude/agents/entire-search.md": 25,
+        ".claude/settings.json": 84,
+        ".codex/agents/entire-search.toml": 23,
+        ".codex/config.toml": 3,
+        ".codex/hooks.json": 52,
+        ".cursor/hooks.json": 40,
+        ".factory/settings.json": 90,
+        ".gemini/agents/entire-search.md": 28,
+        ".gemini/settings.json": 141,
+        ".github/hooks/entire.json": 61,
+        ".opencode/plugins/entire.ts": 267,
+        ".pi/extensions/entire/index.ts": 127
+      }
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 12,
+      "agent_lines_removed": 0
+    }
+  ]
+}
