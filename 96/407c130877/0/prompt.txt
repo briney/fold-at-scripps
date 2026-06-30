@@ -1,0 +1,585 @@
+<task-notification>
+<task-id>a42691a650ea7c07a</task-id>
+<tool-use-id>toolu_01MH1AcGbXcctnfnCuvnVuFY</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a42691a650ea7c07a.output</output-file>
+<status>completed</status>
+<summary>Agent "Implement Task 1: scaffold + settings" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>---
+
+**Status:** DONE
+
+**Commits created:** `236f853 feat: scaffold project with typed settings`
+
+**Test summary:** 2/2 passing, output pristine
+
+**Concerns:** None
+
+**Report file:** `/home/briney/git/fold-at-scripps/.superpowers/sdd/task-1-report.md`</result>
+<usage><subagent_tokens>29334</subagent_tokens><tool_uses>19</tool_uses><duration_ms>85976</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a5b2ec5828801b4a5</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a5b2ec5828801b4a5.output</output-file>
+<status>completed</status>
+<summary>Agent "Review Task 1 (spec + quality)" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>The diff contains the full content of all hand-written files in the first 210 lines. I have everything needed to perform the review. Let me now produce the assessment.
+
+---
+
+### Spec Compliance
+
+- ✅ `pyproject.toml` — matches brief exactly: `name = "fold-at-scripps"`, `version = "0.1.0"`, `requires-python = "&gt;=3.11"`, all six runtime deps at specified minimum versions, all four dev deps at specified minimum versions, hatchling build backend, `packages = ["src/fold_at_scripps"]`, ruff `line-length = 100`, `target-version = "py311"`, ruff lint selects `["E", "F", "I", "UP", "B"]`, isort `known-first-party = ["fold_at_scripps"]`, pytest `asyncio_mode = "auto"`, `testpaths = ["tests"]`, integration marker — every field is present and correct.
+- ✅ `src/fold_at_scripps/__init__.py` — docstring and `__version__ = "0.1.0"` match brief verbatim.
+- ✅ `src/fold_at_scripps/config.py` — `Settings(BaseSettings)` with `env_prefix="FOLD_"`, `env_file=".env"`, `extra="ignore"`, fields `app_name`, `debug`, `database_url` with correct types and defaults, `@lru_cache` on `get_settings()`, `from __future__ import annotations`, Google-style docstrings present.
+- ✅ `tests/__init__.py` — empty file, present.
+- ✅ `tests/conftest.py` — `autouse` fixture `_clear_settings_cache`, `cache_clear()` called before and after, `from __future__ import annotations`, correct `Iterator[None]` return type.
+- ✅ `tests/test_config.py` — `test_settings_defaults` and `test_settings_read_from_env` match brief exactly; `from __future__ import annotations` present; type hints on signatures.
+- ✅ `.gitignore` — appended the seven Python entries (`__pycache__/`, `*.py[cod]`, `.venv/`, `*.egg-info/`, `.pytest_cache/`, `.ruff_cache/`, `.env`) after existing entries, not overwriting.
+- ✅ `uv.lock` — committed; `uv sync` was run.
+- ✅ TDD sequence: RED phase demonstrated `ModuleNotFoundError`, GREEN phase shows 2 passed, lint step shows `All checks passed!`.
+- ⚠️ Cannot verify from diff: `from __future__ import annotations` is absent from `src/fold_at_scripps/__init__.py` — the brief does not show it there either (the brief's snippet for `__init__.py` also omits it), so this is not a defect per the brief. Acceptable.
+- ⚠️ Cannot verify from diff: whether `.venv/` is present but untracked (expected behavior from `uv sync`). Not a code defect; just unverifiable from static diff.
+
+---
+
+### Strengths
+
+- Implementation matches the brief with zero drift — every field, default value, decorator style (`@lru_cache` not `@lru_cache(maxsize=None)`), and docstring matches the spec's code blocks character-for-character.
+- `_clear_settings_cache` fixture uses `autouse=True` and clears both before and after each test, making `test_settings_read_from_env` reliable against test ordering and residual cache state.
+- `extra="ignore"` on `SettingsConfigDict` is a correct defensive choice — prevents pydantic-settings from raising on unknown `FOLD_*` env vars introduced by future tasks.
+- The `Iterator[None]` return type annotation on the fixture is correct and precise (not `Generator`).
+- Absolute imports only; `from __future__ import annotations` present in all three Python modules that have function signatures.
+- `uv.lock` committed as required; `requires-python = "&gt;=3.11"` is propagated into the lock header.
+
+---
+
+### Issues
+
+#### Critical (Must Fix)
+
+None.
+
+#### Important (Should Fix)
+
+**`tests/conftest.py:11` — fixture return type annotation is technically incorrect for an async-aware test suite.**
+The fixture is typed `-&gt; Iterator[None]` and is synchronous, which is correct for a sync fixture. However, the global constraint mandates `asyncio_mode = "auto"`, which means future async fixtures will use `AsyncIterator[None]`. This fixture itself is fine as written — it does not need to be async. No action required on this fixture; flagged only as a reminder that async teardown fixtures added later must use `AsyncIterator[None]` / `AsyncGenerator[None, None]`. Not a defect in this task.
+
+#### Minor (Nice to Have)
+
+**`tests/test_config.py:14` — `test_settings_defaults` does not assert `database_url`.**
+The spec's `Settings` interface specifies `database_url: str` as a required field. The test for defaults checks `app_name` and `debug` but skips asserting the default value of `database_url` (`"REDACTED"`). The behavior is implicitly tested by `test_settings_read_from_env`, but a direct assertion in `test_settings_defaults` would make the default more explicit and prevent silent regression if the default ever changes. Add `assert settings.database_url == "REDACTED"` to `test_settings_defaults`. This is not mandated by the brief's test code, so it is Minor.
+
+**`pyproject.toml:88–92` — no `addopts` or `filterwarnings` in `[tool.pytest.ini_options]`.**
+The test report output is described as "pristine," but `pytest-asyncio&gt;=0.23` is known to emit `PytestUnraisableExceptionWarning` and deprecation notices in some configurations when `asyncio_mode = "auto"` is active and no `filterwarnings` block is set. This is speculative — the GREEN phase output shown in the report is clean — but it is worth adding `filterwarnings = ["error"]` once the suite grows, to catch warnings-as-errors early. Minor cosmetic/future-proofing concern; not a defect for this task.
+
+---
+
+### Assessment
+
+**Task quality:** Approved
+
+**Reasoning:** All specified files are present and match the brief verbatim, the TDD cycle is properly documented with a clean RED→GREEN transition, ruff reports no issues, and the test design (autouse cache-clearing fixture + monkeypatch) is sound. The only gap is a missing assertion on `database_url`'s default value in `test_settings_defaults`, which is minor and not mandated by the brief's provided test code.</result>
+<usage><subagent_tokens>27081</subagent_tokens><tool_uses>3</tool_uses><duration_ms>42065</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a22376fd2b81487a2</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a22376fd2b81487a2.output</output-file>
+<status>completed</status>
+<summary>Agent "Implement Task 2: app factory + liveness" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>---
+
+**Status:** DONE
+
+**Commits created:** `4467ca8 feat: add app factory and liveness health check`
+
+**Test summary:** 3 passed, 0 failed — `test_liveness` (new) + 2 existing config tests; ruff format and check clean.
+
+**Concerns:** One `StarletteDeprecationWarning` from fastapi's own `testclient.py` (suggests `httpx2`); pre-existing, not from our code, not actionable.
+
+**Report:** `/home/briney/git/fold-at-scripps/.superpowers/sdd/task-2-report.md`</result>
+<usage><subagent_tokens>27192</subagent_tokens><tool_uses>15</tool_uses><duration_ms>62916</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a1aab1862ee141d54</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a1aab1862ee141d54.output</output-file>
+<status>completed</status>
+<summary>Agent "Review Task 2 (spec + quality)" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>### Spec Compliance
+- ✅ Spec compliant. All five required files are present and their contents match the brief's prescribed code verbatim, including all named interfaces (`create_app()`, `app`, `router`).
+
+### Strengths
+
+- Exact TDD sequence demonstrated: RED run shows `ModuleNotFoundError` on the correct missing module; GREEN run shows 1 passed. Evidence is credible and matches what the diff would produce.
+- All non-empty modules carry `from __future__ import annotations` (`health.py` line 3, `main.py` line 3, `test_health.py` line 3).
+- Type hints present on all public signatures: `liveness() -&gt; dict[str, str]`, `create_app() -&gt; FastAPI`, `test_liveness() -&gt; None`.
+- Google-style docstrings on every public callable (`liveness`, `create_app`).
+- Absolute imports throughout; no wildcard imports.
+- Test uses `TestClient(create_app())` — fresh app per test call, not the module-level singleton. Good isolation.
+- YAGNI discipline: zero scope creep, no speculative middleware or extra endpoints.
+- `StarletteDeprecationWarning` is correctly diagnosed as originating from fastapi's bundled `testclient.py` (a third-party dependency boundary), not from this task's code. No action required here.
+
+### Issues
+
+#### Critical (Must Fix)
+None.
+
+#### Important (Should Fix)
+None.
+
+#### Minor (Nice to Have)
+
+- `tests/api/test_health.py:10–11` — `test_liveness` constructs a `TestClient` inline inside the test body. For a single test this is fine, but the brief's global constraints specify `asyncio_mode = "auto"` and pytest fixtures as the standard pattern. The test works correctly as written; this is a style note only. No action required unless the suite grows and the pattern becomes inconsistent.
+
+- `src/fold_at_scripps/main.py:61` — The module-level `app = create_app()` executes `get_settings()` at import time. This is required by the brief (it explicitly prescribes this line), so it is not a defect, but it is worth noting for future tasks: if `get_settings()` is cached via `@lru_cache` (as is typical with Pydantic `BaseSettings`), test isolation that needs different settings values will require cache-clearing. This is a downstream concern, not a current issue.
+
+### Assessment
+
+**Task quality:** Approved
+
+**Reasoning:** All five files match the brief's prescribed content exactly; TDD evidence is credible; all global constraints (type hints, `__future__` annotations, docstrings, absolute imports, ruff passing) are satisfied; no scope creep and no correctness issues found.</result>
+<usage><subagent_tokens>23632</subagent_tokens><tool_uses>3</tool_uses><duration_ms>22523</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a395d3f4186553b3f</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a395d3f4186553b3f.output</output-file>
+<status>completed</status>
+<summary>Agent "Implement Task 3: dev Compose stack" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>**Status:** DONE
+
+**Commits created:** `ffd59f3 feat: add dev Docker Compose stack`
+
+**Verification summary:** `docker compose up -d --build` succeeded (postgres healthy, api started); `curl -s localhost:8000/health` returned `{"status":"ok"}`; `docker compose down` tore down cleanly. Port 8000 was briefly occupied by a pre-existing `fold-webapp-web-1` container (stopped temporarily for verification, then restored).
+
+**Concerns:** None — all files match the brief exactly.
+
+**Report:** `/home/briney/git/fold-at-scripps/.superpowers/sdd/task-3-report.md`</result>
+<usage><subagent_tokens>31370</subagent_tokens><tool_uses>17</tool_uses><duration_ms>129282</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>aebefd0a0b995db3b</task-id>
+<tool-use-id>toolu_01TFft9AxuX78NZ5ZoXxGbqX</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/aebefd0a0b995db3b.output</output-file>
+<status>completed</status>
+<summary>Agent "Review Task 3 (spec + quality)" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>### Spec Compliance
+- ✅ Spec compliant — all five required files present, all checked items match the brief exactly.
+
+---
+
+### Strengths
+
+Every field in every file matches the brief verbatim:
+
+- `Dockerfile`: base image `python:3.11-slim`, exact `ENV` block, uv copied from `ghcr.io/astral-sh/uv:latest`, `WORKDIR /app`, correct `COPY` order, `uv sync --frozen`, correct `CMD`.
+- `.dockerignore`: all nine entries from the brief, no omissions or extras.
+- `docker-compose.yml`: service names `postgres` / `api`; `postgres:16`; credentials `fold`/`fold`/`fold_at_scripps`; ports `5432:5432` and `8000:8000`; `pgdata` volume; healthcheck `["CMD-SHELL", "pg_isready -U fold -d fold_at_scripps"]` with interval/timeout/retries matching the brief; `FOLD_DATABASE_URL` host is `postgres` (matching the service name); `./src:/app/src` volume; `depends_on` with `service_healthy`.
+- `.env.example`: comment, `FOLD_DEBUG=false`, `FOLD_DATABASE_URL` pointing to `localhost:5432` (correct for non-container local dev).
+- `README.md`: existing `# fold@Scripps` heading preserved; `## Development` section appended as inner markdown (no outer ` ```markdown ` fence wrapper); all commands match the brief; the closing ` ``` ` for the second code block is present and clean.
+
+Internal consistency is solid: the `FOLD_DATABASE_URL` in `docker-compose.yml` uses host `postgres`, which is the Compose service name (`docker-compose.yml:110`); the `.env.example` correctly uses `localhost` for non-container use (`env.example:3`). No credential drift anywhere across files.
+
+---
+
+### Issues
+
+#### Critical (Must Fix)
+None.
+
+#### Important (Should Fix)
+None.
+
+#### Minor (Nice to Have)
+
+**`Dockerfile:14` — no `--no-dev` flag on `uv sync --frozen`.**
+The brief does not specify `--no-dev`, so this is not a compliance failure. However, `uv sync --frozen` without `--no-dev` installs dev dependencies (pytest, ruff, etc.) into the container image, adding unnecessary size and attack surface for a dev image. The brief defers production hardening, so this is acceptable for now but worth a follow-up note.
+
+**`docker-compose.yml` — no `restart` policy on the `api` service.**
+If the API container exits before Postgres finishes initializing (edge case given `service_healthy`, but possible on very slow hosts), it will not restart. Not a blocking issue for a dev stack, but `restart: on-failure` is a common hardening step.
+
+---
+
+### Assessment
+**Task quality:** Approved
+
+**Reasoning:** Every file matches the brief exactly — service names, ports, credentials, env var names, healthcheck command, Dockerfile instructions, and README append are all correct and internally consistent. The two minor observations are outside the brief's scope for this task.</result>
+<usage><subagent_tokens>23859</subagent_tokens><tool_uses>3</tool_uses><duration_ms>23000</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a1e4ec97be1429b22</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a1e4ec97be1429b22.output</output-file>
+<status>completed</status>
+<summary>Agent "Implement Task 4: async DB + readiness" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>---
+
+**Status:** DONE_WITH_CONCERNS
+
+**Commits created:** `43e1329 feat: add async DB engine and readiness check`
+
+**Test summary:** 5/5 passing incl. 3 integration (2 readiness, 1 db engine), output pristine (1 pre-existing starlette deprecation warning)
+
+**Concern:** `tests/conftest.py` was modified beyond the brief's listed files. The module-level `_engine`/`_sessionmaker` singletons in `db.py` are bound to the asyncio event loop at creation time; pytest-asyncio creates a new loop per test, causing a `RuntimeError: Task got Future attached to a different loop` when the full suite ran. Added an `_reset_db_singletons` autouse fixture that nulls the globals before/after each test. This is the canonical fix for this pattern. Additionally, `# noqa: B008` was added to the `readiness` function signature to suppress ruff's objection to `Depends()` in a default argument — this is the standard FastAPI idiom and the suppression is narrow and justified.
+
+**Report:** `/home/briney/git/fold-at-scripps/.superpowers/sdd/task-4-report.md`</result>
+<usage><subagent_tokens>38221</subagent_tokens><tool_uses>32</tool_uses><duration_ms>137523</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a83cb7fcb61c56b04</task-id>
+<tool-use-id>toolu_011vsiKLXyVYwuyW3YHoPGWs</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a83cb7fcb61c56b04.output</output-file>
+<status>completed</status>
+<summary>Agent "Review Task 4 (spec + quality)" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>I have everything I need for the review. Here is my assessment:
+
+---
+
+### Spec Compliance
+
+- ✅ `src/fold_at_scripps/db.py` created with exact interfaces: `get_engine()`, `get_sessionmaker()`, `get_session()` — correct names, signatures, and return types.
+- ✅ `GET /health/ready` returns `{"status": "ready"}` and queries DB via `SELECT 1`.
+- ✅ `tests/test_db.py` created with `test_engine_connects` marked `@pytest.mark.integration`, body matches spec verbatim.
+- ✅ `tests/api/test_health.py` readiness test uses `ASGITransport` + `AsyncClient`, matches spec verbatim.
+- ✅ `db.py` consumes `fold_at_scripps.config.get_settings` as specified.
+- ✅ TDD RED/GREEN evidence is credible and matches expected failure modes.
+- ✅ Commit message, staged files match brief's Step 11.
+- ⚠️ Cannot verify from diff: `asyncio_mode = "auto"` is set in `pyproject.toml` — the async tests run without explicit `@pytest.mark.asyncio`, which implies it is set, but `pyproject.toml` is not in the diff. The integration tests passing confirms it indirectly.
+
+---
+
+### Strengths
+
+- `db.py` is a verbatim match to the spec's implementation, with no gold-plating: lazy singletons, `pool_pre_ping=True`, `expire_on_commit=False`, and a clean generator-based `get_session`.
+- `health.py` is a clean diff — only what's needed is added; the liveness handler is untouched.
+- The `_reset_db_singletons` fixture is well-documented with a precise, technically accurate docstring explaining the event-loop binding problem. The fixture is minimal: two null assignments before and after, nothing else.
+- All files carry `from __future__ import annotations`, type hints on every signature, and Google-style docstrings. No wildcard imports, no `os.path`, no bare `except`.
+- The `_clear_settings_cache` pattern from the existing conftest is correctly preserved; the new fixture follows the same structure.
+
+---
+
+### Issues
+
+#### Critical (Must Fix)
+
+None.
+
+#### Important (Should Fix)
+
+**`src/fold_at_scripps/api/health.py:41` — `# noqa: B008` is missing the required explanatory comment.**
+
+```python
+async def readiness(session: AsyncSession = Depends(get_session)) -&gt; dict[str, str]:  # noqa: B008
+```
+
+The project rule states: *"do not add `# type: ignore`/suppressions without a specific error code AND a comment explaining why."* The suppression carries `B008` (the specific error code — correct), but has no inline explanation of why. The report's rationale ("canonical FastAPI dependency injection pattern") belongs on the line, not only in the report. The fix is one-line:
+
+```python
+async def readiness(session: AsyncSession = Depends(get_session)) -&gt; dict[str, str]:  # noqa: B008 — FastAPI Depends() in a default arg is the canonical DI pattern; B008 is a false positive here
+```
+
+This is an explicit project constraint, not a style preference. The suppression is technically correct and minimal; the error code is present; only the inline explanation is missing.
+
+#### Minor (Nice to Have)
+
+**`tests/conftest.py:146` — `_reset_db_singletons` is `autouse=True` globally, running for every test including non-async unit tests.**
+
+The fixture is an `Iterator[None]` (synchronous), so it does not cause errors in non-async tests, and the null assignments are essentially free. But future readers may wonder why the DB module is being mutated for config-only tests. Scoping it to the `integration` marker (or to `tests/test_db.py` and `tests/api/`) would be more precise. This is a cosmetic point — the current form is correct and causes no failures.
+
+**`src/fold_at_scripps/db.py:86–89` — `get_session` declared `async def` but typed as returning `AsyncIterator[AsyncSession]`, with no `@asynccontextmanager`.**
+
+This is valid FastAPI generator-dependency syntax: an `async def` with `yield` implicitly creates an async generator. FastAPI handles it correctly. However, the return annotation `AsyncIterator[AsyncSession]` is technically imprecise — the actual type is `AsyncGenerator[AsyncSession, None]`, which is a subtype of `AsyncIterator`. In practice this causes no runtime issue and mirrors the spec's verbatim code, so it is not a defect introduced by this implementer. Noting it for awareness only.
+
+---
+
+### Assessment
+
+**Task quality: Approved — fix the `# noqa` comment before merging.**
+
+The implementation is correct, complete, and minimal. One Important finding: the `B008` suppression violates the project's explicit rule requiring an inline explanatory comment alongside the error code. The `_reset_db_singletons` deviation is justified, correctly diagnosed, and minimal. The Starlette deprecation warning is correctly attributed to the pre-existing `test_liveness` test using `TestClient`, not to this task's changes.</result>
+<usage><subagent_tokens>26148</subagent_tokens><tool_uses>3</tool_uses><duration_ms>34728</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a308f6835089c5092</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a308f6835089c5092.output</output-file>
+<status>completed</status>
+<summary>Agent "Fix Task 4 B008 suppression finding" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>---
+
+**Status:** DONE
+
+Commit created: `e2307cf fix: allow FastAPI Depends in arg defaults via ruff config; drop B008 noqa`
+
+One-line check summary: ruff clean, format clean, 2/2 health tests pass
+
+Report file: `/home/briney/git/fold-at-scripps/.superpowers/sdd/task-4-report.md`</result>
+<usage><subagent_tokens>25316</subagent_tokens><tool_uses>12</tool_uses><duration_ms>45393</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>ac6fb0ec15cf90962</task-id>
+<tool-use-id>toolu_01VgeK18trAmzHnhtbtVJgqy</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/ac6fb0ec15cf90962.output</output-file>
+<status>completed</status>
+<summary>Agent "Re-review Task 4 after fix" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>### Spec Compliance
+- Spec compliant
+
+### Issues
+
+#### Critical (Must Fix)
+None.
+
+#### Important (Should Fix)
+None. The previously-flagged `# noqa: B008` suppression is confirmed gone. `health.py` line 77 in the diff reads:
+
+```python
+async def readiness(session: AsyncSession = Depends(get_session)) -&gt; dict[str, str]:
+```
+
+No suppression comment present. The line is 76 characters, well within the 100-char limit.
+
+#### Minor (Nice to Have)
+
+**`pyproject.toml` — `extend-immutable-calls` list breadth is not wrong but is forward-looking.** Only `fastapi.Depends` is actually used in the current codebase; the other eight entries (`Query`, `Path`, `Header`, `Body`, `Form`, `File`, `Cookie`, `Security`) are preemptive. This is not a defect — they are the standard FastAPI injection callables and adding them now prevents future B008 fires — but reviewers should be aware this was a deliberate choice, not cargo-culting. No action required.
+
+**`tests/conftest.py:182-194` — `_reset_db_singletons` resets before and after each test but does not close the engine.** Setting `_engine = None` discards the reference without calling `await engine.dispose()`. For the current test suite this is harmless (pytest-asyncio's event loop teardown will GC the engine and close connections), but it can surface "Event loop is closed" warnings in asyncio debug mode. This is a very minor quality concern, not a correctness defect.
+
+---
+
+### Assessment
+
+**Task quality:** Approved
+
+**Reasoning:** The Important issue from the first review is cleanly resolved — the `# noqa: B008` suppression is gone and replaced with correct ruff configuration rather than just a comment — and all other task requirements (interfaces in `db.py`, readiness endpoint, integration-marked tests, `_reset_db_singletons` fixture, `from __future__ import annotations` in every new module, Google-style docstrings, type hints on all signatures) are fully satisfied with no regressions introduced.</result>
+<usage><subagent_tokens>24744</subagent_tokens><tool_uses>2</tool_uses><duration_ms>16717</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a02f7d4d20e38cdc2</task-id>
+<tool-use-id>toolu_01V8WqSmEDV5hHZuKQjs55z5</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a02f7d4d20e38cdc2.output</output-file>
+<status>completed</status>
+<summary>Agent "Implement Task 5: CI workflow" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>---
+
+**Status:** DONE
+
+**Commits created:** `a6aa824 ci: add lint and test workflow`
+
+**Summary:** CI workflow added; local suite 5/5 pass, ruff clean (check + format --check both pass).
+
+**Concerns:** One minor warning from pytest output — `httpx` deprecation in fastapi's testclient suggesting `httpx2` — but this is a third-party library warning, not a test failure, and not something this task is responsible for.
+
+**Report file:** `/home/briney/git/fold-at-scripps/.superpowers/sdd/task-5-report.md`</result>
+<usage><subagent_tokens>25106</subagent_tokens><tool_uses>11</tool_uses><duration_ms>55875</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a30b9fd3968a9016d</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a30b9fd3968a9016d.output</output-file>
+<status>completed</status>
+<summary>Agent "Review Task 5 (spec + quality)" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>### Spec Compliance
+- ✅ Spec compliant — the workflow file matches the brief exactly, verbatim.
+
+Verified against diff lines:
+- Triggers (diff:19-22): `push: branches: [main]` and `pull_request` — matches brief.
+- Postgres service (diff:28-40): image `postgres:16`, credentials `POSTGRES_USER: fold` / `POSTGRES_PASSWORD: fold` / `POSTGRES_DB: fold_at_scripps`, port `5432:5432`, healthcheck `pg_isready -U fold -d fold_at_scripps` with 5s interval / 3s timeout / 10 retries — matches brief exactly.
+- `FOLD_DATABASE_URL` (diff:42): `REDACTED` at job level — matches brief exactly.
+- Steps (diff:43-54): checkout@v4 → astral-sh/setup-uv@v5 → `uv sync --frozen` → `ruff check .` → `ruff format --check .` → `pytest -v` — matches brief exactly.
+
+⚠️ Cannot verify from diff: consistency of `FOLD_DATABASE_URL` with `docker-compose.yml` and `Settings` defaults (those files are not in this diff). The report claims consistency, but this cannot be confirmed from the single-file diff. Not a blocker since the workflow itself is self-consistent and the credentials are the explicit values specified in the global constraints.
+
+---
+
+### Strengths
+
+- The file is an exact faithful transcription of the brief's spec — no drift, no omissions, no additions.
+- `FOLD_DATABASE_URL` is set at the job level (diff:41), making it available to all steps including pytest, which is the correct placement.
+- The healthcheck on the Postgres service container (`pg_isready -U fold -d fold_at_scripps`, 10 retries) is properly configured — this prevents the test step from starting before the database is actually ready to accept connections.
+- Action versions are current and sensible: `actions/checkout@v4`, `astral-sh/setup-uv@v5`.
+- `uv sync --frozen` is correct for CI: it enforces the lockfile rather than silently updating it.
+- `--health-timeout 3s` with `--health-interval 5s` and 10 retries gives 50 seconds of grace, which is adequate for Postgres cold-start on GitHub-hosted runners.
+- YAML structure and indentation are valid; the folded block scalar (`&gt;-`) on `options` is the idiomatic way to pass multiple Docker flags without quoting headaches.
+
+---
+
+### Issues
+
+#### Critical (Must Fix)
+None.
+
+#### Important (Should Fix)
+None.
+
+#### Minor (Nice to Have)
+
+**`.github/workflows/ci.yml`:27 — No explicit Python version pin**
+
+The `astral-sh/setup-uv@v5` action will install uv and then `uv sync --frozen` will use whatever Python is available on the runner (currently `ubuntu-latest` ships Python 3.12). The brief does not require a Python pin, so this is not a spec violation. However, the local suite ran against Python 3.14.3 (visible in the report), meaning the CI Python version differs from the dev environment. This could mask incompatibilities in either direction. A `python-version: "3.14"` field on the `setup-uv` action, or an explicit `actions/setup-python@v5` step, would make CI more faithful to the dev environment.
+
+```yaml
+- name: Install uv
+  uses: astral-sh/setup-uv@v5
+  with:
+    python-version: "3.14"
+```
+
+**`.github/workflows/ci.yml`:25 — No `env` set for `services` to inherit `FOLD_DATABASE_URL`**
+
+This is not actually a bug — the Postgres service container does not need `FOLD_DATABASE_URL`; it reads `POSTGRES_*` variables. The job-level `env` is correctly scoped for the steps. Mentioned only for completeness; no action needed.
+
+---
+
+### Assessment
+**Task quality:** Approved
+
+**Reasoning:** The workflow is a verbatim, exact implementation of the spec with correct Postgres credentials, healthcheck, `FOLD_DATABASE_URL` placement, uv usage, and all three required quality-gate steps in the right order; the only gap (no Python version pin) is a minor hygiene note not required by the brief.</result>
+<usage><subagent_tokens>23410</subagent_tokens><tool_uses>3</tool_uses><duration_ms>27791</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a5c8ee5d46f33040b</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a5c8ee5d46f33040b.output</output-file>
+<status>completed</status>
+<summary>Agent "Final whole-branch review" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>That's fine — I have enough from the diff and progress notes to assess. The StarletteDeprecationWarning is confirmed (per the T2 note) to originate from FastAPI's bundled `TestClient` (a dependency), not project code. That's a dependency-internal warning the project cannot fix without switching test clients.
+
+I now have a complete picture. Here is my review.
+
+---
+
+### Strengths
+
+- **Clean, idiomatic foundation.** Every module has `from __future__ import annotations`, Google-style docstrings, full type hints, and absolute imports — consistent with the plan's global constraints and the user's style guide. `config.py:10-22`, `db.py`, `main.py`, `health.py` are all tidy and minimal.
+- **Lazy singleton DB layer is the right call.** `db.py:18-26` defers engine creation until first use, so importing the package (e.g. for `--help` or unit tests that never touch the DB) never opens a connection. `pool_pre_ping=True` is a sound default for a long-lived service that will face transient Postgres disconnects.
+- **Integration tests verify real behavior.** `test_db.py:12-15` and the readiness test in `test_health.py:19-25` both hit a real Postgres through a real `ASGITransport`/session — nothing is mocked. The `integration` marker plus CI's Postgres service means these actually exercise connectivity in CI (`ci.yml:90-103` sets `FOLD_DATABASE_URL` and runs unfiltered `pytest -v`).
+- **The `_reset_db_singletons` fixture (conftest.py:19-32) is a justified, well-documented deviation.** Its docstring correctly explains the event-loop-binding problem: pytest-asyncio creates a fresh loop per test, and a module-level engine created under a prior (now-closed) loop would break. Resetting the globals is the correct fix and the seam is clean. This is a real improvement over the brief's file list, not scope creep.
+- **`extend-immutable-calls` (pyproject.toml:35-46) is cleaner than the `# noqa: B008` it replaced** and pre-registers all FastAPI injectors, so future endpoints using `Query`/`Body`/etc. won't trip B008. Forward-looking without being speculative code.
+- **CI and Compose are faithful to the plan** and share the same Postgres credentials/healthcheck, so local and CI environments match.
+
+### Minor-findings triage
+
+- **[T1] `test_settings_defaults` doesn't assert `database_url` default** — *defer (low value).* The env-read test already covers `database_url`; asserting the hardcoded default adds little and couples the test to a literal. Optional one-liner if desired.
+- **[T1] `filterwarnings = ["error"]` once suite grows** — *defer-to-later-plan.* Premature now precisely because of the unfixable StarletteDeprecationWarning (see below); revisit when that warning is gone.
+- **[T1] `__init__.py` lacks `from __future__ import annotations`** — *defer (harmless).* The module has no annotations; the global constraint is satisfied in spirit. Add it for uniformity if touching the file anyway.
+- **[T2] `TestClient` constructed inline** — *defer.* Fine at two tests; promote to a fixture when the API suite grows.
+- **[T2] StarletteDeprecationWarning from bundled TestClient** — *defer (not fixable here).* See Important issue below for the assessment.
+- **[T3] Dockerfile installs dev deps (no `--no-dev`)** — *defer-to-deployment-plan.* Explicitly a dev image per plan non-goals.
+- **[T3] `api` service has no restart policy** — *defer-to-deployment-plan.* Production hardening is out of scope.
+- **[T4] `_reset_db_singletons` nulls `_engine` without `await engine.dispose()`** — *defer (with a note).* Harmless today; could emit "Event loop is closed" under asyncio debug mode. Worth fixing when a real async teardown fixture exists. See Minor below.
+- **[T4] `extend-immutable-calls` lists all injectors** — *no action; accept as intentional.*
+- **[T5] No Python version pin in CI** — **fix-before-merge (cheap, prevents drift).** See Important below.
+
+### Issues
+
+#### Critical (Must Fix)
+None. The foundation is correct and boots; tests verify real behavior.
+
+#### Important (Should Fix)
+
+- **CI has no Python version pin — `ci.yml:92-97`.** `setup-uv@v5` with no `python-version` resolves whatever interpreter is on the runner/uv default, while the developer ran 3.14.x (per T5 note) and the Dockerfile pins `python:3.11-slim`. Three different Python versions across dev / CI / runtime is exactly the drift a foundation plan should foreclose, and a 3.11-vs-3.14 mismatch can mask version-specific failures until a later plan trips on them. *Fix:* pin `setup-uv` with `python-version: "3.11"` (or add `.python-version`), matching the Dockerfile and `requires-python`. Cheap, and it makes CI faithful to the deployment target. (I'd actually rate this borderline Critical for a "tested foundation every later plan builds on," but it doesn't break the current build, so Important.)
+
+- **Readiness endpoint returns 500, not 503, when the DB is down — `health.py:21-24`.** `await session.execute(text("SELECT 1"))` raises on connection failure, which FastAPI surfaces as an unhandled 500. A readiness probe's contract is "return non-2xx (conventionally 503) when not ready" — orchestrators (k8s, the planned scheduler/deploy) distinguish 503 from 500. As written, an unreachable DB looks like an application crash rather than "not ready yet." *Assessment:* the plan only specified the happy path and no test covers the failure case, so this is faithful to the brief — but it's a foundation seam that later plans (health-gated deploys) will build on, so I'd fix it now: wrap in `try/except` and raise `HTTPException(status_code=503, detail="database unavailable")`, with a non-integration test asserting 503 against a bad `FOLD_DATABASE_URL`. At minimum, flag it explicitly for the deployment plan.
+
+- **Test output is *not* fully pristine: recurring StarletteDeprecationWarning.** Per T2 this comes from FastAPI's bundled `TestClient` (a dependency), not project code, so it cannot be silenced by fixing our code. *Assessment:* acceptable to merge — it's third-party and the only sync-client test is `test_liveness`. But do **not** add `filterwarnings = ["error"]` until it's resolved (it would fail the suite). Best low-cost mitigation if you want clean output: a narrowly-scoped `filterwarnings` ignore in `pyproject.toml` keyed to that specific warning/module, with a comment, rather than a global suppression. Defer is fine; just don't lose track of it.
+
+#### Minor (Nice to Have)
+
+- **No graceful engine disposal anywhere — `db.py` / `main.py`.** There's no FastAPI `lifespan`/shutdown hook calling `await get_engine().dispose()`, and the test fixture (conftest.py:30-32) drops the engine reference without disposing it. Harmless at this scope (process exit reclaims sockets), but a lifespan shutdown is the natural home for clean pool teardown and will be wanted once real DB work lands. Add an `await engine.dispose()` in the conftest teardown and a `lifespan` shutdown handler in a later plan.
+- **`integration`-marked tests fail (not skip) when Postgres is absent — conftest.py / pyproject.toml:23-26.** The marker is registered but nothing auto-skips it without a DB. A developer following the README who forgets `docker compose up -d postgres` gets red failures, not informative skips. Consider a `pytest_collection_modifyitems` hook (or a `--run-integration` opt-in) that skips integration tests when `FOLD_DATABASE_URL` is unreachable/unset. Documented in the README, so low severity, but it's a friction point for a repo many people will clone.
+- **`api` Compose service bind-mounts `./src` but the image was built with deps installed, not the source as editable in a way that reflects live edits to deps** — `docker-compose.yml:23-24`. Live-reload of `src` works, but there's no `--reload` flag on the container `CMD` (Dockerfile:15), so edits to mounted `src` won't actually hot-reload in the container. Minor dev-ergonomics gap; either add `--reload` for the compose dev target or document that the container needs a restart on edits.
+
+### Recommendations (later plans / process)
+
+- **Data-model plan:** introduce a SQLAlchemy declarative `Base` and an Alembic setup; the lazy-engine seam here is ready for it. Add the `lifespan` shutdown disposal at the same time.
+- **Deployment plan:** multi-stage Dockerfile with `--no-dev`, `restart: on-failure`, the 503 readiness contract, and the CI Python pin (if not done now) all belong together. The current single-stage image and dev-dep install are correctly deferred.
+- **Process:** the per-task ledger in `progress.md` worked well — the Minor findings were accurate and well-triaged. Keep that pattern.
+
+### Assessment
+
+**Ready to merge?** With fixes.
+
+**Reasoning:** The foundation is correct, idiomatic, and its tests verify real behavior against real Postgres — no Critical issues. Before merge I'd pin the CI Python version (cheap, prevents the dev/CI/runtime version drift a foundation must avoid) and decide on the 503 readiness contract (fix now or explicitly defer to the deployment plan); everything else is safely deferrable.</result>
+<usage><subagent_tokens>43173</subagent_tokens><tool_uses>6</tool_uses><duration_ms>82617</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>acd26496ca8b637d5</task-id>
+<tool-use-id>toolu_01VxKo3WvUoboyQo9XLDpVHA</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/acd26496ca8b637d5.output</output-file>
+<status>completed</status>
+<summary>Agent "Apply final-review fixes" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>---
+
+**Status:** DONE
+
+Commit created: `55d9084` — fix: pin CI python, 503 readiness on DB failure, pristine test output
+
+6/6 tests pass, output is pristine — `StarletteDeprecationWarning` is gone (TestClient removed); ruff check and format both clean.
+
+Report: `/home/briney/git/fold-at-scripps/.superpowers/sdd/final-review-fixes-report.md`</result>
+<usage><subagent_tokens>25833</subagent_tokens><tool_uses>15</tool_uses><duration_ms>60946</duration_ms></usage>
+</task-notification>
+
+---
+
+option 2
+
+---
+
+PR is merged and branch deleted. Go ahead with drafting plan 2
