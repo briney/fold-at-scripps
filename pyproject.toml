@@ -13,6 +13,7 @@ dependencies = [
     "pydantic-settings>=2.3",
     "sqlalchemy[asyncio]>=2.0.30",
     "itsdangerous>=2.2.0",
+    "email-validator>=2.1",
 ]
 
 [dependency-groups]
