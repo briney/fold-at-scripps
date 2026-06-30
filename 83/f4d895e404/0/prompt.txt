@@ -1,0 +1,13 @@
+OK, let's start the architecture conversation. I'd like a clean, modern interface and in our previous discussion you mentioned that a SPA + JSON backend would make a programmatic API more straightforward so I'm leaning in that direction. How much of the "downstream" backend stuff (job queueing, data model, storage, auth, etc) are essentially determined by the framework we choose and are thus less important to discuss until the framework decision is made?
+
+---
+
+Agree with the sequencing of decisions, let's start with the framework
+
+---
+
+Lock A, custom scheduler behind an Executor interface
+
+---
+
+Excellent, go ahead with `docs/ARCHITECTURE.md`
