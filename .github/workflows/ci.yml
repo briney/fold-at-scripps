@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: fold
+          POSTGRES_PASSWORD: fold
+          POSTGRES_DB: fold_at_scripps
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U fold -d fold_at_scripps"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      FOLD_DATABASE_URL: postgresql+asyncpg://fold:fold@localhost:5432/fold_at_scripps
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: uv sync --frozen
+      - name: Lint
+        run: uv run ruff check .
+      - name: Format check
+        run: uv run ruff format --check .
+      - name: Test
+        run: uv run pytest -v

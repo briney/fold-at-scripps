@@ -10,3 +10,12 @@
 
 # Tool hooks under .github (keep the rest of .github/ tracked for CI, etc.)
 .github/hooks/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.env
