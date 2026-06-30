@@ -14,6 +14,7 @@ from fold_at_scripps.models.base import Base, TimestampMixin, UUIDPKMixin, str_e
 from fold_at_scripps.models.enums import RunStatus
 
 if TYPE_CHECKING:
+    from fold_at_scripps.models.artifact import Artifact
     from fold_at_scripps.models.tool import Tool
     from fold_at_scripps.models.user import User
 
@@ -47,3 +48,6 @@ class Run(UUIDPKMixin, TimestampMixin, Base):
 
     user: Mapped[User] = relationship(back_populates="runs")
     tool: Mapped[Tool] = relationship(back_populates="runs")
+    artifacts: Mapped[list[Artifact]] = relationship(
+        back_populates="run", cascade="all, delete-orphan"
+    )
