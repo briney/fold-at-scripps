@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.7.8",
+  "checkpoint_version": "branch-v1",
+  "checkpoint_id": "1b5754ee7d1f",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 18,
+  "files_touched": [
+    "docs/superpowers/plans/2026-06-30-service-layer-run-lifecycle.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/1b/5754ee7d1f/0/metadata.json",
+      "transcript": "/1b/5754ee7d1f/0/full.jsonl",
+      "compact_transcript": "/1b/5754ee7d1f/0/transcript.jsonl",
+      "content_hash": "/1b/5754ee7d1f/0/content_hash.txt",
+      "prompt": "/1b/5754ee7d1f/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 14471,
+    "cache_creation_tokens": 762834,
+    "cache_read_tokens": 164360805,
+    "output_tokens": 587567,
+    "api_call_count": 386
+  }
+}
