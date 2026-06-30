@@ -5,9 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from fold_at_scripps.models import RunStatus, Tool, User, UserStatus
+from fold_at_scripps.models import Run, RunStatus, Tool, User, UserStatus
 from fold_at_scripps.runs.quota import QuotaExceeded
 from fold_at_scripps.runs.service import submit_run
 from fold_at_scripps.runs.validation import InvalidParams
@@ -60,6 +61,8 @@ async def test_submit_rejects_invalid_params(tmp_path: Path, db_session: AsyncSe
         await submit_run(
             db_session, user=user, tool=tool, params={}, storage=LocalStorage(tmp_path)
         )
+    count = await db_session.scalar(select(func.count()).select_from(Run))
+    assert count == 0
 
 
 async def test_submit_enforces_quota(tmp_path: Path, db_session: AsyncSession) -> None:
@@ -73,3 +76,5 @@ async def test_submit_enforces_quota(tmp_path: Path, db_session: AsyncSession) -
         await submit_run(
             db_session, user=user, tool=tool, params={"num_sequences": 2}, storage=storage
         )
+    count = await db_session.scalar(select(func.count()).select_from(Run))
+    assert count == 1

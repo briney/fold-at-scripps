@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fold_at_scripps.models import Run, RunStatus, Tool, User
@@ -15,7 +17,7 @@ async def submit_run(
     *,
     user: User,
     tool: Tool,
-    params: dict,
+    params: dict[str, Any],
     storage: Storage,
 ) -> Run:
     """Validate params, enforce the quota, persist the config, and queue a run.
