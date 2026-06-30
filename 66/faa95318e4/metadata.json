@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.7.8",
+  "checkpoint_version": "branch-v1",
+  "checkpoint_id": "66faa95318e4",
+  "strategy": "manual-commit",
+  "branch": "feature/service-layer",
+  "checkpoints_count": 12,
+  "files_touched": [
+    "src/fold_at_scripps/runs/service.py"
+  ],
+  "sessions": [
+    {
+      "metadata": "/66/faa95318e4/0/metadata.json",
+      "transcript": "/66/faa95318e4/0/full.jsonl",
+      "compact_transcript": "/66/faa95318e4/0/transcript.jsonl",
+      "content_hash": "/66/faa95318e4/0/content_hash.txt",
+      "prompt": "/66/faa95318e4/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 15193,
+    "cache_creation_tokens": 816214,
+    "cache_read_tokens": 204167819,
+    "output_tokens": 620717,
+    "api_call_count": 436
+  }
+}
