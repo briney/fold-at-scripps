@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import json
 import uuid
 from pathlib import Path
+
+import pytest
 
 from fold_at_scripps.storage import LocalStorage
 
@@ -24,8 +27,6 @@ def test_write_config_round_trips(tmp_path: Path) -> None:
     storage.create_run_dir(run_id)
     rel = storage.write_config(run_id, {"num_sequences": 8})
     assert rel == "config/config.json"
-    import json
-
     assert json.loads(storage.config_path(run_id).read_text()) == {"num_sequences": 8}
 
 
@@ -39,3 +40,18 @@ def test_list_outputs_indexes_files(tmp_path: Path) -> None:
     assert outputs[0].name == "design.pdb"
     assert outputs[0].relative_path == "design.pdb"
     assert outputs[0].size_bytes == 5
+
+
+def test_input_path_allows_plain_filename(tmp_path: Path) -> None:
+    storage = LocalStorage(tmp_path)
+    run_id = uuid.uuid4()
+    path = storage.input_path(run_id, "structure.pdb")
+    assert path.name == "structure.pdb"
+    assert path.parent.name == "inputs"
+
+
+def test_input_path_rejects_traversal(tmp_path: Path) -> None:
+    storage = LocalStorage(tmp_path)
+    run_id = uuid.uuid4()
+    with pytest.raises(ValueError):
+        storage.input_path(run_id, "../config/config.json")

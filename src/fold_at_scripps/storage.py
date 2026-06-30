@@ -61,8 +61,12 @@ class LocalStorage:
         return "config/config.json"
 
     def input_path(self, run_id: uuid.UUID, filename: str) -> Path:
-        """Return the path for an uploaded input file."""
-        return self.run_root(run_id) / "inputs" / filename
+        """Return the path for an uploaded input file, rejecting traversal."""
+        base = (self.run_root(run_id) / "inputs").resolve()
+        resolved = (base / filename).resolve()
+        if not resolved.is_relative_to(base):
+            raise ValueError(f"filename escapes inputs directory: {filename!r}")
+        return resolved
 
     def outputs_dir(self, run_id: uuid.UUID) -> Path:
         """Return the run's outputs directory."""
