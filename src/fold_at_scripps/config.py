@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     app_name: str = "fold@Scripps"
     debug: bool = False
     database_url: str = "postgresql+asyncpg://fold:fold@localhost:5432/fold_at_scripps"
+    secret_key: str = "dev-insecure-secret-change-me"
+    session_https_only: bool = False
 
 
 @lru_cache

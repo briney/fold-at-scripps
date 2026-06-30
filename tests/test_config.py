@@ -19,3 +19,9 @@ def test_settings_read_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     settings = get_settings()
     assert settings.debug is True
     assert settings.database_url == "postgresql+asyncpg://u:p@db:5432/test"
+
+
+def test_settings_session_defaults() -> None:
+    settings = get_settings()
+    assert settings.secret_key  # non-empty default for dev
+    assert settings.session_https_only is False
