@@ -92,8 +92,16 @@ and it is the durable core that a future programmatic API would reuse unchanged.
 
 PostgreSQL. Core entities:
 
-- **User** — identity (from the auth provider), display name, role
-  (`user` / `admin`), quota config. Everything scopes to a user.
+- **User** — identity (from the auth provider), display name, and three
+  orthogonal fields the admin console manages:
+  - **`role`** — `user` / `admin` (admin gates access to the admin console).
+  - **`tier`** — `standard` / `power`; maps to a default quota profile
+    (config-defined), so quotas can be managed at the group level.
+  - **`status`** — `pending` / `active` / `disabled`. New accounts start
+    `pending` until an admin activates them; `disabled` blocks access while
+    retaining all data.
+  Plus optional **per-user quota overrides** that take precedence over the tier
+  profile. Everything scopes to a user.
 - **Tool** — one row per autobio tool **version**: id, category, GPU count, and a
   **snapshot of the input schema**, synced from `autobio list` / `info` rather
   than hand-authored. The guided form is generated from the stored schema. The
@@ -104,16 +112,31 @@ PostgreSQL. Core entities:
   version, input params (JSON), status
   (`queued` / `running` / `succeeded` / `failed` / `canceled`), assigned GPU IDs,
   timestamps (submitted / started / finished), wall time, GPU-seconds, error
-  info, output-dir pointer.
+  info, output-dir pointer, and a soft-delete marker (`hidden_at`) — a user
+  "delete" only sets `hidden_at` (removing the run from their history); the
+  record and outputs are retained and remain visible to admins.
 - **Artifact** — files a run produced: name, type, size, path. A lightweight
   index over the run's output directory, populated on completion. The bytes live
   on disk; the DB only points at them.
+- **AllowedEmail / Invitation** — the registration allowlist: approved email
+  addresses (optionally carrying an invite token), with who added them and when.
+  Registration is refused for any address not on the list.
+- **PasswordResetToken** — one-time, expiring tokens minted when an admin
+  initiates a reset; the user exchanges the token (delivered out-of-band) for a
+  new password.
+- **AuditLog** — admin actions (approve/suspend a user, change a quota or tier,
+  initiate a reset, cancel or hard-delete a run): actor, action, target,
+  timestamp, details. Lightweight accountability for a multi-admin resource.
+- **SystemSettings** — a small singleton of operational flags, notably
+  `maintenance_mode` (dispatch paused).
 
 **Usage and quotas.** Usage (GPU-hours) is recorded on every run from day one,
 for visibility and so budgets can be enabled later without backfilling. v1
 **enforces a per-user concurrency cap** (max simultaneous queued/running runs) —
-the control that actually prevents one user monopolizing the 8 GPUs. A GPU-hours
-budget is a later, additive toggle.
+the control that actually prevents one user monopolizing the 8 GPUs. The cap
+comes from the user's **tier** quota profile (`standard` / `power`) with an
+optional **per-user override**, both set from the admin console. A GPU-hours
+budget is a later, additive toggle over the same machinery.
 
 ## Job lifecycle
 
@@ -125,7 +148,8 @@ budget is a later, additive toggle.
 3. **Schedule.** The scheduler claims a `queued` run via
    `SELECT … FOR UPDATE SKIP LOCKED` once enough GPUs are free, marks it
    `running`, and assigns specific GPU IDs exclusively (count from the tool's
-   metadata, default 1).
+   metadata, default 1). While `maintenance_mode` is set the scheduler stops
+   claiming new runs and lets in-flight runs finish.
 4. **Execute.** The `Executor` invokes autobio's Python API, which launches the
    tool's Docker container on the assigned GPUs.
 5. **Finalize.** On completion the Executor writes outputs to `Storage`, indexes
@@ -176,11 +200,51 @@ hardened security.
 
 - **Mechanism (v1):** local accounts (app-managed users + passwords), behind an
   **identity-provider boundary** so the mechanism is swappable.
+- **Registration is gated:** an email must be on the **allowlist** to register,
+  and a new account stays **`pending`** until an admin activates it (see
+  [Admin console](#admin-console)). The first admin is seeded out-of-band
+  (env var / CLI) on deploy, since with gating no one can self-approve into
+  existence.
 - **Sessions:** httpOnly, secure session **cookies** for the SPA — simple and
   safe-enough on an intranet, and it avoids the JWT-in-`localStorage` XSS footgun.
 - **Future programmatic credential:** per-user **API tokens**, issued from the UI
   and checked by the same auth layer, mapping to the same `User`. Not built now,
   not precluded.
+
+## Admin console
+
+The admin console is **not a separate system** — it is a set of admin-scoped API
+endpoints plus admin views in the same SPA, all routed through the **same service
+layer** so every admin action (activating a user, changing a quota, cancelling a
+run) reuses the existing domain logic rather than poking the database directly.
+Access is gated by `role = admin`. This is the bespoke admin UI we accepted when
+choosing FastAPI over Django's built-in admin; it stays cheap because it reuses
+the core.
+
+**v1 capabilities:**
+
+- **User management**
+  - Maintain the registration **allowlist** / send invitations.
+  - **Activate** `pending` accounts and **suspend / re-enable** (`disabled`)
+    users.
+  - Set a user's **tier** (`standard` / `power`) and **per-user quota
+    overrides**.
+  - **Initiate password resets** (mints a one-time token shared out-of-band).
+  - **Grant / revoke admin** `role`. The first admin is seeded via env/CLI on
+    deploy.
+- **Job oversight** — view **all** runs across users (including `hidden_at`
+  runs), filter by user/status, **cancel/kill** running runs, and
+  **hard-delete** runs to reclaim storage. (A user "delete" only hides; only an
+  admin removes.)
+- **System status** — live view of the 8-GPU pool (free/busy and what is running
+  on each), plus queue depth and waits.
+- **Usage reporting** — per-user and system-wide GPU-hours over time, to inform
+  quota decisions and serve the "usage tracking / fair shared resource" goal.
+- **Tool catalog management** — trigger the autobio → catalog sync and
+  enable/disable individual tools.
+- **Maintenance mode** — pause job dispatch (running jobs finish, the queue
+  holds) for node maintenance or autobio image updates.
+- **Audit log** — record admin actions for accountability.
 
 ## The swappable boundaries
 
@@ -220,3 +284,6 @@ accommodate them prematurely:
 - Hardened, security-critical auth.
 - VRAM packing / GPU sharing.
 - Server-sent-events / push status (polling is sufficient for v1).
+- Storage retention / automated cleanup policies (admins reclaim space manually).
+- Permission granularity beyond `standard` / `power` / `admin`.
+- Email-based / self-service account and password flows (admin-mediated in v1).
