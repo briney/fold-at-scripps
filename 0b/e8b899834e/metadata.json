@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.7.8",
+  "checkpoint_version": "branch-v1",
+  "checkpoint_id": "0be8b899834e",
+  "strategy": "manual-commit",
+  "branch": "docs/vision",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "docs/VISION.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0b/e8b899834e/0/metadata.json",
+      "transcript": "/0b/e8b899834e/0/full.jsonl",
+      "compact_transcript": "/0b/e8b899834e/0/transcript.jsonl",
+      "content_hash": "/0b/e8b899834e/0/content_hash.txt",
+      "prompt": "/0b/e8b899834e/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 8623,
+    "cache_creation_tokens": 77918,
+    "cache_read_tokens": 341345,
+    "output_tokens": 17244,
+    "api_call_count": 11
+  }
+}
