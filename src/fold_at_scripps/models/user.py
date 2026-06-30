@@ -23,13 +23,22 @@ class User(UUIDPKMixin, TimestampMixin, Base):
     display_name: Mapped[str] = mapped_column(String(200), nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[UserRole] = mapped_column(
-        str_enum(UserRole), default=UserRole.USER, nullable=False
+        str_enum(UserRole),
+        default=UserRole.USER,
+        server_default=UserRole.USER.value,
+        nullable=False,
     )
     tier: Mapped[UserTier] = mapped_column(
-        str_enum(UserTier), default=UserTier.STANDARD, nullable=False
+        str_enum(UserTier),
+        default=UserTier.STANDARD,
+        server_default=UserTier.STANDARD.value,
+        nullable=False,
     )
     status: Mapped[UserStatus] = mapped_column(
-        str_enum(UserStatus), default=UserStatus.PENDING, nullable=False
+        str_enum(UserStatus),
+        default=UserStatus.PENDING,
+        server_default=UserStatus.PENDING.value,
+        nullable=False,
     )
     max_concurrent_runs_override: Mapped[int | None] = mapped_column(nullable=True)
 

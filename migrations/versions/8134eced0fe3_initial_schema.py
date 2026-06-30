@@ -1,8 +1,8 @@
 """initial schema
 
-Revision ID: 4ae9f1f0e12e
+Revision ID: 8134eced0fe3
 Revises:
-Create Date: 2026-06-30 13:36:00.608759
+Create Date: 2026-06-30 13:47:48.636980
 
 """
 
@@ -14,7 +14,7 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision: str = "4ae9f1f0e12e"
+revision: str = "8134eced0fe3"
 down_revision: str | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -68,14 +68,21 @@ def upgrade() -> None:
         sa.Column("display_name", sa.String(length=200), nullable=False),
         sa.Column("hashed_password", sa.String(length=255), nullable=False),
         sa.Column(
-            "role", sa.Enum("user", "admin", name="userrole", native_enum=False), nullable=False
+            "role",
+            sa.Enum("user", "admin", name="userrole", native_enum=False),
+            server_default="user",
+            nullable=False,
         ),
         sa.Column(
-            "tier", sa.Enum("standard", "power", name="usertier", native_enum=False), nullable=False
+            "tier",
+            sa.Enum("standard", "power", name="usertier", native_enum=False),
+            server_default="standard",
+            nullable=False,
         ),
         sa.Column(
             "status",
             sa.Enum("pending", "active", "disabled", name="userstatus", native_enum=False),
+            server_default="pending",
             nullable=False,
         ),
         sa.Column("max_concurrent_runs_override", sa.Integer(), nullable=True),
@@ -181,6 +188,7 @@ def upgrade() -> None:
                 name="runstatus",
                 native_enum=False,
             ),
+            server_default="queued",
             nullable=False,
         ),
         sa.Column("params", postgresql.JSONB(astext_type=sa.Text()), nullable=False),

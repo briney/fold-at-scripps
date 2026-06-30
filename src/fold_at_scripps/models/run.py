@@ -28,7 +28,11 @@ class Run(UUIDPKMixin, TimestampMixin, Base):
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True, nullable=False)
     tool_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tools.id"), index=True, nullable=False)
     status: Mapped[RunStatus] = mapped_column(
-        str_enum(RunStatus), default=RunStatus.QUEUED, index=True, nullable=False
+        str_enum(RunStatus),
+        default=RunStatus.QUEUED,
+        server_default=RunStatus.QUEUED.value,
+        index=True,
+        nullable=False,
     )
     params: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     assigned_gpu_ids: Mapped[list[int] | None] = mapped_column(ARRAY(Integer), nullable=True)
