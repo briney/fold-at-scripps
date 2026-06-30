@@ -40,3 +40,35 @@ async def test_tool_same_name_different_version_allowed(db_session: AsyncSession
     await db_session.commit()
     count = len((await db_session.execute(select(Tool))).scalars().all())
     assert count == 2
+
+
+async def test_tool_metadata_fields(db_session: AsyncSession) -> None:
+    tool = Tool(
+        name="proteinmpnn",
+        version="1.0.0",
+        category="inverse-folding",
+        gpu_count=1,
+        input_schema={},
+        description="Design sequences for a backbone.",
+        image_tag="proteinmpnn:1.0.0",
+        default_timeout=600,
+        supports_batch=True,
+    )
+    db_session.add(tool)
+    await db_session.commit()
+    await db_session.refresh(tool)
+    assert tool.description == "Design sequences for a backbone."
+    assert tool.image_tag == "proteinmpnn:1.0.0"
+    assert tool.default_timeout == 600
+    assert tool.supports_batch is True
+
+
+async def test_tool_metadata_defaults(db_session: AsyncSession) -> None:
+    tool = Tool(name="esmfold", version="1.0.0", category="structure-prediction", input_schema={})
+    db_session.add(tool)
+    await db_session.commit()
+    await db_session.refresh(tool)
+    assert tool.description is None
+    assert tool.image_tag is None
+    assert tool.default_timeout is None
+    assert tool.supports_batch is False

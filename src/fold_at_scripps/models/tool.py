@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import Boolean, Integer, String, UniqueConstraint, true
+from sqlalchemy import Boolean, Integer, String, Text, UniqueConstraint, false, true
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -27,6 +27,13 @@ class Tool(UUIDPKMixin, TimestampMixin, Base):
     input_schema: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     enabled: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default=true(), nullable=False
+    )
+
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    image_tag: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    default_timeout: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    supports_batch: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=false(), nullable=False
     )
 
     runs: Mapped[list[Run]] = relationship(back_populates="tool")

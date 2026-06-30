@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import asyncio
+import shutil
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typer.testing import CliRunner
 
 from fold_at_scripps.cli import app
-from fold_at_scripps.models import AllowedEmail, User, UserRole, UserStatus
+from fold_at_scripps.models import AllowedEmail, Tool, User, UserRole, UserStatus
 
 pytestmark = pytest.mark.integration
 
@@ -57,3 +58,11 @@ async def test_create_admin_rejects_duplicate(db_session: AsyncSession) -> None:
     assert first.exit_code == 0
     second = await asyncio.to_thread(runner.invoke, app, args)
     assert second.exit_code == 1
+
+
+@pytest.mark.skipif(shutil.which("autobio") is None, reason="autobio CLI not on PATH")
+async def test_sync_catalog_populates_tools(db_session: AsyncSession) -> None:
+    result = await asyncio.to_thread(runner.invoke, app, ["sync-catalog"])
+    assert result.exit_code == 0, result.output
+    count = await db_session.scalar(select(func.count()).select_from(Tool))
+    assert count > 0
