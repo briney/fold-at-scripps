@@ -4,12 +4,13 @@ version = "0.1.0"
 description = "Web front-end for running biological models via autobio."
 requires-python = ">=3.11"
 dependencies = [
+    "alembic>=1.13",
+    "asyncpg>=0.29",
     "fastapi>=0.111",
     "uvicorn[standard]>=0.30",
     "pydantic>=2.7",
     "pydantic-settings>=2.3",
     "sqlalchemy[asyncio]>=2.0.30",
-    "asyncpg>=0.29",
 ]
 
 [dependency-groups]
@@ -36,6 +37,9 @@ select = ["E", "F", "I", "UP", "B"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["fold_at_scripps"]
+
+[tool.ruff.lint.per-file-ignores]
+"migrations/versions/*" = ["E501"]
 
 [tool.ruff.lint.flake8-bugbear]
 extend-immutable-calls = [
