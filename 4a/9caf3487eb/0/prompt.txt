@@ -2106,3 +2106,7 @@ push + PR
 ---
 
 PR merged and branch deleted. Start drafting Plan 4
+
+---
+
+Yes, same handoff as before
