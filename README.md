@@ -17,3 +17,13 @@ Or run the full stack in containers:
 docker compose up --build
 curl localhost:8000/health    # {"status":"ok"}
 ```
+
+## Database migrations
+
+Migrations are managed with [Alembic](https://alembic.sqlalchemy.org/).
+
+```bash
+uv run alembic upgrade head          # apply all migrations
+uv run alembic revision --autogenerate -m "describe change"  # after editing models
+uv run alembic downgrade -1          # roll back one revision
+```
