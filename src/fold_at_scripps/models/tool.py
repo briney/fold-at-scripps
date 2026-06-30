@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import Boolean, Integer, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from fold_at_scripps.models.base import Base, TimestampMixin, UUIDPKMixin
+
+if TYPE_CHECKING:
+    from fold_at_scripps.models.run import Run
 
 
 class Tool(UUIDPKMixin, TimestampMixin, Base):
@@ -24,5 +27,4 @@ class Tool(UUIDPKMixin, TimestampMixin, Base):
     input_schema: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
-
-# NOTE: the `runs` relationship is added in Task 4 (once `Run` exists), with `Run.tool`.
+    runs: Mapped[list[Run]] = relationship(back_populates="tool")

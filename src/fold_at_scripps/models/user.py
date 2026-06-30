@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from sqlalchemy import String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from fold_at_scripps.models.base import Base, TimestampMixin, UUIDPKMixin, str_enum
 from fold_at_scripps.models.enums import UserRole, UserStatus, UserTier
+
+if TYPE_CHECKING:
+    from fold_at_scripps.models.run import Run
 
 
 class User(UUIDPKMixin, TimestampMixin, Base):
@@ -28,6 +33,4 @@ class User(UUIDPKMixin, TimestampMixin, Base):
     )
     max_concurrent_runs_override: Mapped[int | None] = mapped_column(nullable=True)
 
-
-# NOTE: the `runs` relationship is intentionally NOT defined here yet; it is added
-# in Task 4 (once `Run` exists), together with `Run.user`.
+    runs: Mapped[list[Run]] = relationship(back_populates="user")
