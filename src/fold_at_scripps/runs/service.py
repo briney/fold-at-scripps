@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import datetime
 import uuid
 from typing import Any
@@ -10,7 +11,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from fold_at_scripps.models import Run, RunStatus, Tool, User
+from fold_at_scripps.executor import ExecutionRequest, Executor
+from fold_at_scripps.models import Artifact, Run, RunStatus, Tool, User
 from fold_at_scripps.runs.quota import check_quota
 from fold_at_scripps.runs.validation import validate_params
 from fold_at_scripps.storage import Storage
@@ -88,6 +90,50 @@ async def soft_delete_run(session: AsyncSession, user: User, run_id: uuid.UUID) 
     if run is None:
         return None
     run.hidden_at = datetime.datetime.now(datetime.UTC)
+    await session.commit()
+    await session.refresh(run)
+    return run
+
+
+async def execute_run(session: AsyncSession, run: Run, executor: Executor, storage: Storage) -> Run:
+    """Run a queued run via the executor, recording outputs, timing, and final status."""
+    tool = await session.get(Tool, run.tool_id)
+    if tool is None:  # pragma: no cover - referential integrity guarantees this
+        raise ValueError(f"Run {run.id} references missing tool {run.tool_id}")
+
+    run.status = RunStatus.RUNNING
+    run.started_at = datetime.datetime.now(datetime.UTC)
+    await session.commit()
+
+    request = ExecutionRequest(
+        tool_name=tool.name,
+        tool_version=tool.version,
+        image_tag=tool.image_tag,
+        config_path=storage.config_path(run.id),
+        outputs_dir=storage.outputs_dir(run.id),
+        gpu_ids=run.assigned_gpu_ids or [],
+        timeout=tool.default_timeout,
+    )
+    result = await asyncio.to_thread(executor.execute, request)
+
+    run.finished_at = datetime.datetime.now(datetime.UTC)
+    run.wall_time_seconds = result.wall_time_seconds
+    run.gpu_seconds = result.gpu_seconds
+    if result.succeeded:
+        for stored in storage.list_outputs(run.id):
+            session.add(
+                Artifact(
+                    run_id=run.id,
+                    name=stored.name,
+                    path=stored.relative_path,
+                    content_type=stored.content_type,
+                    size_bytes=stored.size_bytes,
+                )
+            )
+        run.status = RunStatus.SUCCEEDED
+    else:
+        run.status = RunStatus.FAILED
+        run.error = result.error
     await session.commit()
     await session.refresh(run)
     return run
