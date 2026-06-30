@@ -8,6 +8,8 @@ import typer
 from sqlalchemy import select
 
 from fold_at_scripps.auth.passwords import hash_password
+from fold_at_scripps.catalog.autobio_source import AutobioToolSource
+from fold_at_scripps.catalog.service import sync_catalog
 from fold_at_scripps.db import dispose_engine, get_sessionmaker
 from fold_at_scripps.models import AllowedEmail, User, UserRole, UserStatus
 
@@ -52,6 +54,22 @@ def create_admin(
 ) -> None:
     """Create an active admin account and allowlist its email."""
     asyncio.run(_create_admin(email, password, display_name))
+
+
+async def _sync_catalog() -> None:
+    source = AutobioToolSource()
+    try:
+        async with get_sessionmaker()() as session:
+            result = await sync_catalog(session, source)
+        typer.echo(f"Catalog synced: {result.added} added, {result.updated} updated.")
+    finally:
+        await dispose_engine()
+
+
+@app.command("sync-catalog")
+def sync_catalog_command() -> None:
+    """Sync the tool catalog from autobio."""
+    asyncio.run(_sync_catalog())
 
 
 def main() -> None:
