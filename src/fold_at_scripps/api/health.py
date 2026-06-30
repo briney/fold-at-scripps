@@ -18,7 +18,7 @@ async def liveness() -> dict[str, str]:
 
 
 @router.get("/health/ready")
-async def readiness(session: AsyncSession = Depends(get_session)) -> dict[str, str]:  # noqa: B008
+async def readiness(session: AsyncSession = Depends(get_session)) -> dict[str, str]:
     """Readiness probe — confirms the database is reachable."""
     await session.execute(text("SELECT 1"))
     return {"status": "ready"}

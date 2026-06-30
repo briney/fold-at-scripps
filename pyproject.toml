@@ -37,6 +37,19 @@ select = ["E", "F", "I", "UP", "B"]
 [tool.ruff.lint.isort]
 known-first-party = ["fold_at_scripps"]
 
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Path",
+    "fastapi.Header",
+    "fastapi.Body",
+    "fastapi.Form",
+    "fastapi.File",
+    "fastapi.Cookie",
+    "fastapi.Security",
+]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
