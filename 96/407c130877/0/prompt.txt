@@ -583,3 +583,7 @@ option 2
 ---
 
 PR is merged and branch deleted. Go ahead with drafting plan 2
+
+---
+
+commit straight to main, then subagent-driven execution
