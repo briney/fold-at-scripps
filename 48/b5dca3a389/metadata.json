@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.7.8",
+  "checkpoint_version": "branch-v1",
+  "checkpoint_id": "48b5dca3a389",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "docs/superpowers/plans/2026-06-30-foundation-scaffold.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/48/b5dca3a389/0/metadata.json",
+      "transcript": "/48/b5dca3a389/0/full.jsonl",
+      "compact_transcript": "/48/b5dca3a389/0/transcript.jsonl",
+      "content_hash": "/48/b5dca3a389/0/content_hash.txt",
+      "prompt": "/48/b5dca3a389/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 138,
+    "cache_creation_tokens": 24974,
+    "cache_read_tokens": 759590,
+    "output_tokens": 29359,
+    "api_call_count": 5
+  }
+}
