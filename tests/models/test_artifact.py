@@ -34,6 +34,7 @@ async def test_artifact_creation(db_session: AsyncSession) -> None:
     assert artifact.id is not None
     assert artifact.content_type is None
     assert artifact.size_bytes == 2048
+    await db_session.refresh(artifact, attribute_names=["run"])
     assert artifact.run.id == run.id
 
 
