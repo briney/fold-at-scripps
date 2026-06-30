@@ -257,7 +257,7 @@ git commit -m "feat: add ORM base, mixins, and enums"
 - Consumes: `Base`, `UUIDPKMixin`, `TimestampMixin`, `str_enum` (Task 1); `UserRole`, `UserStatus`, `UserTier` (Task 1); `fold_at_scripps.config.get_settings`.
 - Produces:
   - `tests/models/conftest.py::db_session` — async fixture yielding an `AsyncSession` against a freshly-created-and-dropped schema (requires Postgres).
-  - `fold_at_scripps.models.user.User` with columns `email`, `display_name`, `hashed_password`, `role`, `tier`, `status`, `max_concurrent_runs_override`, plus `runs` relationship (back-populated by `Run.user` in Task 4).
+  - `fold_at_scripps.models.user.User` with columns `email`, `display_name`, `hashed_password`, `role`, `tier`, `status`, `max_concurrent_runs_override`. **No relationships yet** — `User.runs` is added in Task 4, once `Run` exists. (SQLAlchemy resolves relationship target classes at mapper-configuration time, which the first ORM query triggers; a relationship to a not-yet-defined model raises `InvalidRequestError` and breaks the User tests.)
 
 - [ ] **Step 1: Create the model-test fixture**
 
@@ -363,16 +363,11 @@ Create `src/fold_at_scripps/models/user.py`:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from sqlalchemy import String
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 
 from fold_at_scripps.models.base import Base, TimestampMixin, UUIDPKMixin, str_enum
 from fold_at_scripps.models.enums import UserRole, UserStatus, UserTier
-
-if TYPE_CHECKING:
-    from fold_at_scripps.models.run import Run
 
 
 class User(UUIDPKMixin, TimestampMixin, Base):
@@ -394,7 +389,8 @@ class User(UUIDPKMixin, TimestampMixin, Base):
     )
     max_concurrent_runs_override: Mapped[int | None] = mapped_column(nullable=True)
 
-    runs: Mapped[list[Run]] = relationship(back_populates="user")
+# NOTE: the `runs` relationship is intentionally NOT defined here yet; it is added
+# in Task 4 (once `Run` exists), together with `Run.user`.
 ```
 
 - [ ] **Step 5: Register the model in `models/__init__.py`**
@@ -451,7 +447,7 @@ git commit -m "feat: add User model and model test fixtures"
 
 **Interfaces:**
 - Consumes: `Base`, `UUIDPKMixin`, `TimestampMixin` (Task 1); `db_session` (Task 2).
-- Produces: `fold_at_scripps.models.tool.Tool` with `name`, `version`, `category`, `gpu_count`, `input_schema` (JSONB), `enabled`, a unique `(name, version)` constraint, and a `runs` relationship (back-populated by `Run.tool` in Task 4).
+- Produces: `fold_at_scripps.models.tool.Tool` with `name`, `version`, `category`, `gpu_count`, `input_schema` (JSONB), `enabled`, a unique `(name, version)` constraint. **No relationships yet** — `Tool.runs` is added in Task 4, once `Run` exists (same mapper-configuration reason as `User.runs`).
 
 - [ ] **Step 1: Write the failing Tool tests**
 
@@ -514,16 +510,13 @@ Create `src/fold_at_scripps/models/tool.py`:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from sqlalchemy import Boolean, Integer, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 
 from fold_at_scripps.models.base import Base, TimestampMixin, UUIDPKMixin
-
-if TYPE_CHECKING:
-    from fold_at_scripps.models.run import Run
 
 
 class Tool(UUIDPKMixin, TimestampMixin, Base):
@@ -539,7 +532,7 @@ class Tool(UUIDPKMixin, TimestampMixin, Base):
     input_schema: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
-    runs: Mapped[list[Run]] = relationship(back_populates="tool")
+# NOTE: the `runs` relationship is added in Task 4 (once `Run` exists), with `Run.tool`.
 ```
 
 - [ ] **Step 4: Register the model in `models/__init__.py`**
@@ -598,7 +591,7 @@ git commit -m "feat: add Tool catalog model"
 
 **Interfaces:**
 - Consumes: `Base`, `UUIDPKMixin`, `TimestampMixin`, `str_enum` (Task 1); `RunStatus` (Task 1); `User` (Task 2), `Tool` (Task 3); `db_session` (Task 2).
-- Produces: `fold_at_scripps.models.run.Run` with `user_id`/`tool_id` FKs, `status`, `params` (JSONB), `assigned_gpu_ids` (int array, nullable), `started_at`/`finished_at`/`wall_time_seconds`/`gpu_seconds`/`error`/`output_dir`/`hidden_at` (all nullable), `user`/`tool`/`artifacts` relationships, and a `(user_id, hidden_at)` composite index. `artifacts` is back-populated by `Artifact.run` (Task 5).
+- Produces: `fold_at_scripps.models.run.Run` with `user_id`/`tool_id` FKs, `status`, `params` (JSONB), `assigned_gpu_ids` (int array, nullable), `started_at`/`finished_at`/`wall_time_seconds`/`gpu_seconds`/`error`/`output_dir`/`hidden_at` (all nullable), `user`/`tool` relationships, and a `(user_id, hidden_at)` composite index. This task also **wires the inverse relationships** `User.runs` and `Tool.runs` (modifying `user.py` and `tool.py`). The `Run.artifacts` relationship is deferred to Task 5, when `Artifact` exists.
 
 - [ ] **Step 1: Write the failing Run tests**
 
@@ -664,9 +657,9 @@ async def test_run_assigned_gpu_ids_array(db_session: AsyncSession) -> None:
 Run: `uv run pytest tests/models/test_run.py -v`
 Expected: FAIL — `ImportError: cannot import name 'Run' from 'fold_at_scripps.models'`.
 
-- [ ] **Step 3: Implement the Run model**
+- [ ] **Step 3: Implement the Run model and wire inverse relationships**
 
-Create `src/fold_at_scripps/models/run.py`:
+Create `src/fold_at_scripps/models/run.py` (the `artifacts` relationship is deferred to Task 5, when `Artifact` exists):
 
 ```python
 """Run model — one submission of a tool by a user."""
@@ -685,7 +678,6 @@ from fold_at_scripps.models.base import Base, TimestampMixin, UUIDPKMixin, str_e
 from fold_at_scripps.models.enums import RunStatus
 
 if TYPE_CHECKING:
-    from fold_at_scripps.models.artifact import Artifact
     from fold_at_scripps.models.tool import Tool
     from fold_at_scripps.models.user import User
 
@@ -719,9 +711,82 @@ class Run(UUIDPKMixin, TimestampMixin, Base):
 
     user: Mapped[User] = relationship(back_populates="runs")
     tool: Mapped[Tool] = relationship(back_populates="runs")
-    artifacts: Mapped[list[Artifact]] = relationship(
-        back_populates="run", cascade="all, delete-orphan"
+```
+
+Now wire the inverse relationships. Replace `src/fold_at_scripps/models/user.py` with (adds the `runs` relationship):
+
+```python
+"""User account model."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from sqlalchemy import String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from fold_at_scripps.models.base import Base, TimestampMixin, UUIDPKMixin, str_enum
+from fold_at_scripps.models.enums import UserRole, UserStatus, UserTier
+
+if TYPE_CHECKING:
+    from fold_at_scripps.models.run import Run
+
+
+class User(UUIDPKMixin, TimestampMixin, Base):
+    """A user account (local authentication in v1)."""
+
+    __tablename__ = "users"
+
+    email: Mapped[str] = mapped_column(String(320), unique=True, index=True, nullable=False)
+    display_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[UserRole] = mapped_column(
+        str_enum(UserRole), default=UserRole.USER, nullable=False
     )
+    tier: Mapped[UserTier] = mapped_column(
+        str_enum(UserTier), default=UserTier.STANDARD, nullable=False
+    )
+    status: Mapped[UserStatus] = mapped_column(
+        str_enum(UserStatus), default=UserStatus.PENDING, nullable=False
+    )
+    max_concurrent_runs_override: Mapped[int | None] = mapped_column(nullable=True)
+
+    runs: Mapped[list[Run]] = relationship(back_populates="user")
+```
+
+And replace `src/fold_at_scripps/models/tool.py` with (adds the `runs` relationship):
+
+```python
+"""Tool catalog model — one row per autobio tool version."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
+from sqlalchemy import Boolean, Integer, String, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from fold_at_scripps.models.base import Base, TimestampMixin, UUIDPKMixin
+
+if TYPE_CHECKING:
+    from fold_at_scripps.models.run import Run
+
+
+class Tool(UUIDPKMixin, TimestampMixin, Base):
+    """A specific version of an autobio tool, synced into the catalog."""
+
+    __tablename__ = "tools"
+    __table_args__ = (UniqueConstraint("name", "version"),)
+
+    name: Mapped[str] = mapped_column(String(100), index=True, nullable=False)
+    version: Mapped[str] = mapped_column(String(50), nullable=False)
+    category: Mapped[str] = mapped_column(String(50), nullable=False)
+    gpu_count: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    input_schema: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    runs: Mapped[list[Run]] = relationship(back_populates="tool")
 ```
 
 - [ ] **Step 4: Register the model in `models/__init__.py`**
@@ -782,7 +847,7 @@ git commit -m "feat: add Run model"
 
 **Interfaces:**
 - Consumes: `Base`, `UUIDPKMixin` (Task 1); `Run` (Task 4); `db_session` (Task 2).
-- Produces: `fold_at_scripps.models.artifact.Artifact` with `run_id` FK (`ON DELETE CASCADE`), `name`, `path`, `content_type` (nullable), `size_bytes` (nullable), `created_at`, and a `run` relationship. Deleting a `Run` deletes its artifacts.
+- Produces: `fold_at_scripps.models.artifact.Artifact` with `run_id` FK (`ON DELETE CASCADE`), `name`, `path`, `content_type` (nullable), `size_bytes` (nullable), `created_at`, and a `run` relationship. This task also **wires the inverse relationship** `Run.artifacts` (`cascade="all, delete-orphan"`, modifying `run.py`). Deleting a `Run` deletes its artifacts.
 
 - [ ] **Step 1: Write the failing Artifact tests**
 
@@ -842,7 +907,7 @@ async def test_artifact_cascade_delete_with_run(db_session: AsyncSession) -> Non
 Run: `uv run pytest tests/models/test_artifact.py -v`
 Expected: FAIL — `ImportError: cannot import name 'Artifact' from 'fold_at_scripps.models'`.
 
-- [ ] **Step 3: Implement the Artifact model**
+- [ ] **Step 3: Implement the Artifact model and wire the back-reference**
 
 Create `src/fold_at_scripps/models/artifact.py`:
 
@@ -881,6 +946,64 @@ class Artifact(UUIDPKMixin, Base):
     )
 
     run: Mapped[Run] = relationship(back_populates="artifacts")
+```
+
+Now wire the inverse relationship. Replace `src/fold_at_scripps/models/run.py` with (adds the `artifacts` relationship and its `Artifact` type-check import):
+
+```python
+"""Run model — one submission of a tool by a user."""
+
+from __future__ import annotations
+
+import datetime
+import uuid
+from typing import TYPE_CHECKING, Any
+
+from sqlalchemy import DateTime, Float, ForeignKey, Index, Integer, Text
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from fold_at_scripps.models.base import Base, TimestampMixin, UUIDPKMixin, str_enum
+from fold_at_scripps.models.enums import RunStatus
+
+if TYPE_CHECKING:
+    from fold_at_scripps.models.artifact import Artifact
+    from fold_at_scripps.models.tool import Tool
+    from fold_at_scripps.models.user import User
+
+
+class Run(UUIDPKMixin, TimestampMixin, Base):
+    """A single run of a tool: queued, scheduled onto GPUs, executed, recorded."""
+
+    __tablename__ = "runs"
+    __table_args__ = (Index("ix_runs_user_id_hidden_at", "user_id", "hidden_at"),)
+
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True, nullable=False)
+    tool_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tools.id"), index=True, nullable=False)
+    status: Mapped[RunStatus] = mapped_column(
+        str_enum(RunStatus), default=RunStatus.QUEUED, index=True, nullable=False
+    )
+    params: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    assigned_gpu_ids: Mapped[list[int] | None] = mapped_column(ARRAY(Integer), nullable=True)
+    started_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    finished_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    wall_time_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
+    gpu_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    output_dir: Mapped[str | None] = mapped_column(Text, nullable=True)
+    hidden_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    user: Mapped[User] = relationship(back_populates="runs")
+    tool: Mapped[Tool] = relationship(back_populates="runs")
+    artifacts: Mapped[list[Artifact]] = relationship(
+        back_populates="run", cascade="all, delete-orphan"
+    )
 ```
 
 - [ ] **Step 4: Register the model in `models/__init__.py`**
