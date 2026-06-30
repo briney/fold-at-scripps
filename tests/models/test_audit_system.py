@@ -36,3 +36,12 @@ async def test_system_settings_rejects_second_row(db_session: AsyncSession) -> N
     db_session.add(SystemSettings(id=2))
     with pytest.raises(IntegrityError):
         await db_session.commit()
+
+
+async def test_system_settings_quota_defaults(db_session: AsyncSession) -> None:
+    settings = SystemSettings(id=1)
+    db_session.add(settings)
+    await db_session.commit()
+    await db_session.refresh(settings)
+    assert settings.standard_max_concurrent_runs == 3
+    assert settings.power_max_concurrent_runs == 12
