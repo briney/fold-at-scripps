@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import uuid
 from dataclasses import dataclass
 
 from sqlalchemy import select
@@ -53,3 +54,20 @@ async def sync_catalog(session: AsyncSession, source: ToolSource) -> SyncResult:
             updated += 1
     await session.commit()
     return SyncResult(added=added, updated=updated)
+
+
+async def list_enabled_tools(session: AsyncSession, *, category: str | None = None) -> list[Tool]:
+    """Return enabled tools, optionally filtered by category, ordered by name."""
+    stmt = select(Tool).where(Tool.enabled.is_(True))
+    if category is not None:
+        stmt = stmt.where(Tool.category == category)
+    stmt = stmt.order_by(Tool.name)
+    return list((await session.execute(stmt)).scalars().all())
+
+
+async def get_enabled_tool(session: AsyncSession, tool_id: uuid.UUID) -> Tool | None:
+    """Return a single enabled tool by id, or None."""
+    tool = await session.get(Tool, tool_id)
+    if tool is None or not tool.enabled:
+        return None
+    return tool
