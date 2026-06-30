@@ -2,18 +2,25 @@
 
 from __future__ import annotations
 
+from fold_at_scripps.models.access import AllowedEmail, PasswordResetToken
 from fold_at_scripps.models.artifact import Artifact
+from fold_at_scripps.models.audit import AuditLog
 from fold_at_scripps.models.base import Base, TimestampMixin, UUIDPKMixin, str_enum
 from fold_at_scripps.models.enums import RunStatus, UserRole, UserStatus, UserTier
 from fold_at_scripps.models.run import Run
+from fold_at_scripps.models.system import SystemSettings
 from fold_at_scripps.models.tool import Tool
 from fold_at_scripps.models.user import User
 
 __all__ = [
+    "AllowedEmail",
     "Artifact",
+    "AuditLog",
     "Base",
+    "PasswordResetToken",
     "Run",
     "RunStatus",
+    "SystemSettings",
     "TimestampMixin",
     "Tool",
     "UUIDPKMixin",
