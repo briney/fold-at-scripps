@@ -19,7 +19,7 @@ class User(UUIDPKMixin, TimestampMixin, Base):
 
     __tablename__ = "users"
 
-    email: Mapped[str] = mapped_column(String(320), unique=True, index=True, nullable=False)
+    email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False)
     display_name: Mapped[str] = mapped_column(String(200), nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[UserRole] = mapped_column(

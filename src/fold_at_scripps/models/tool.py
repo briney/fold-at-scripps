@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import Boolean, Integer, String, UniqueConstraint
+from sqlalchemy import Boolean, Integer, String, UniqueConstraint, true
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -23,8 +23,10 @@ class Tool(UUIDPKMixin, TimestampMixin, Base):
     name: Mapped[str] = mapped_column(String(100), index=True, nullable=False)
     version: Mapped[str] = mapped_column(String(50), nullable=False)
     category: Mapped[str] = mapped_column(String(50), nullable=False)
-    gpu_count: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    gpu_count: Mapped[int] = mapped_column(Integer, default=1, server_default="1", nullable=False)
     input_schema: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
-    enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    enabled: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default=true(), nullable=False
+    )
 
     runs: Mapped[list[Run]] = relationship(back_populates="tool")

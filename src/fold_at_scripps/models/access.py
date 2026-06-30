@@ -16,7 +16,7 @@ class AllowedEmail(UUIDPKMixin, Base):
 
     __tablename__ = "allowed_emails"
 
-    email: Mapped[str] = mapped_column(String(320), unique=True, index=True, nullable=False)
+    email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False)
     invited_by_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
