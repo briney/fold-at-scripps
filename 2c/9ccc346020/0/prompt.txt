@@ -1,0 +1,1456 @@
+<task-notification>
+<task-id>a42691a650ea7c07a</task-id>
+<tool-use-id>toolu_01MH1AcGbXcctnfnCuvnVuFY</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a42691a650ea7c07a.output</output-file>
+<status>completed</status>
+<summary>Agent "Implement Task 1: scaffold + settings" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>---
+
+**Status:** DONE
+
+**Commits created:** `236f853 feat: scaffold project with typed settings`
+
+**Test summary:** 2/2 passing, output pristine
+
+**Concerns:** None
+
+**Report file:** `/home/briney/git/fold-at-scripps/.superpowers/sdd/task-1-report.md`</result>
+<usage><subagent_tokens>29334</subagent_tokens><tool_uses>19</tool_uses><duration_ms>85976</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a5b2ec5828801b4a5</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a5b2ec5828801b4a5.output</output-file>
+<status>completed</status>
+<summary>Agent "Review Task 1 (spec + quality)" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>The diff contains the full content of all hand-written files in the first 210 lines. I have everything needed to perform the review. Let me now produce the assessment.
+
+---
+
+### Spec Compliance
+
+- ✅ `pyproject.toml` — matches brief exactly: `name = "fold-at-scripps"`, `version = "0.1.0"`, `requires-python = "&gt;=3.11"`, all six runtime deps at specified minimum versions, all four dev deps at specified minimum versions, hatchling build backend, `packages = ["src/fold_at_scripps"]`, ruff `line-length = 100`, `target-version = "py311"`, ruff lint selects `["E", "F", "I", "UP", "B"]`, isort `known-first-party = ["fold_at_scripps"]`, pytest `asyncio_mode = "auto"`, `testpaths = ["tests"]`, integration marker — every field is present and correct.
+- ✅ `src/fold_at_scripps/__init__.py` — docstring and `__version__ = "0.1.0"` match brief verbatim.
+- ✅ `src/fold_at_scripps/config.py` — `Settings(BaseSettings)` with `env_prefix="FOLD_"`, `env_file=".env"`, `extra="ignore"`, fields `app_name`, `debug`, `database_url` with correct types and defaults, `@lru_cache` on `get_settings()`, `from __future__ import annotations`, Google-style docstrings present.
+- ✅ `tests/__init__.py` — empty file, present.
+- ✅ `tests/conftest.py` — `autouse` fixture `_clear_settings_cache`, `cache_clear()` called before and after, `from __future__ import annotations`, correct `Iterator[None]` return type.
+- ✅ `tests/test_config.py` — `test_settings_defaults` and `test_settings_read_from_env` match brief exactly; `from __future__ import annotations` present; type hints on signatures.
+- ✅ `.gitignore` — appended the seven Python entries (`__pycache__/`, `*.py[cod]`, `.venv/`, `*.egg-info/`, `.pytest_cache/`, `.ruff_cache/`, `.env`) after existing entries, not overwriting.
+- ✅ `uv.lock` — committed; `uv sync` was run.
+- ✅ TDD sequence: RED phase demonstrated `ModuleNotFoundError`, GREEN phase shows 2 passed, lint step shows `All checks passed!`.
+- ⚠️ Cannot verify from diff: `from __future__ import annotations` is absent from `src/fold_at_scripps/__init__.py` — the brief does not show it there either (the brief's snippet for `__init__.py` also omits it), so this is not a defect per the brief. Acceptable.
+- ⚠️ Cannot verify from diff: whether `.venv/` is present but untracked (expected behavior from `uv sync`). Not a code defect; just unverifiable from static diff.
+
+---
+
+### Strengths
+
+- Implementation matches the brief with zero drift — every field, default value, decorator style (`@lru_cache` not `@lru_cache(maxsize=None)`), and docstring matches the spec's code blocks character-for-character.
+- `_clear_settings_cache` fixture uses `autouse=True` and clears both before and after each test, making `test_settings_read_from_env` reliable against test ordering and residual cache state.
+- `extra="ignore"` on `SettingsConfigDict` is a correct defensive choice — prevents pydantic-settings from raising on unknown `FOLD_*` env vars introduced by future tasks.
+- The `Iterator[None]` return type annotation on the fixture is correct and precise (not `Generator`).
+- Absolute imports only; `from __future__ import annotations` present in all three Python modules that have function signatures.
+- `uv.lock` committed as required; `requires-python = "&gt;=3.11"` is propagated into the lock header.
+
+---
+
+### Issues
+
+#### Critical (Must Fix)
+
+None.
+
+#### Important (Should Fix)
+
+**`tests/conftest.py:11` — fixture return type annotation is technically incorrect for an async-aware test suite.**
+The fixture is typed `-&gt; Iterator[None]` and is synchronous, which is correct for a sync fixture. However, the global constraint mandates `asyncio_mode = "auto"`, which means future async fixtures will use `AsyncIterator[None]`. This fixture itself is fine as written — it does not need to be async. No action required on this fixture; flagged only as a reminder that async teardown fixtures added later must use `AsyncIterator[None]` / `AsyncGenerator[None, None]`. Not a defect in this task.
+
+#### Minor (Nice to Have)
+
+**`tests/test_config.py:14` — `test_settings_defaults` does not assert `database_url`.**
+The spec's `Settings` interface specifies `database_url: str` as a required field. The test for defaults checks `app_name` and `debug` but skips asserting the default value of `database_url` (`"REDACTED"`). The behavior is implicitly tested by `test_settings_read_from_env`, but a direct assertion in `test_settings_defaults` would make the default more explicit and prevent silent regression if the default ever changes. Add `assert settings.database_url == "REDACTED"` to `test_settings_defaults`. This is not mandated by the brief's test code, so it is Minor.
+
+**`pyproject.toml:88–92` — no `addopts` or `filterwarnings` in `[tool.pytest.ini_options]`.**
+The test report output is described as "pristine," but `pytest-asyncio&gt;=0.23` is known to emit `PytestUnraisableExceptionWarning` and deprecation notices in some configurations when `asyncio_mode = "auto"` is active and no `filterwarnings` block is set. This is speculative — the GREEN phase output shown in the report is clean — but it is worth adding `filterwarnings = ["error"]` once the suite grows, to catch warnings-as-errors early. Minor cosmetic/future-proofing concern; not a defect for this task.
+
+---
+
+### Assessment
+
+**Task quality:** Approved
+
+**Reasoning:** All specified files are present and match the brief verbatim, the TDD cycle is properly documented with a clean RED→GREEN transition, ruff reports no issues, and the test design (autouse cache-clearing fixture + monkeypatch) is sound. The only gap is a missing assertion on `database_url`'s default value in `test_settings_defaults`, which is minor and not mandated by the brief's provided test code.</result>
+<usage><subagent_tokens>27081</subagent_tokens><tool_uses>3</tool_uses><duration_ms>42065</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a22376fd2b81487a2</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a22376fd2b81487a2.output</output-file>
+<status>completed</status>
+<summary>Agent "Implement Task 2: app factory + liveness" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>---
+
+**Status:** DONE
+
+**Commits created:** `4467ca8 feat: add app factory and liveness health check`
+
+**Test summary:** 3 passed, 0 failed — `test_liveness` (new) + 2 existing config tests; ruff format and check clean.
+
+**Concerns:** One `StarletteDeprecationWarning` from fastapi's own `testclient.py` (suggests `httpx2`); pre-existing, not from our code, not actionable.
+
+**Report:** `/home/briney/git/fold-at-scripps/.superpowers/sdd/task-2-report.md`</result>
+<usage><subagent_tokens>27192</subagent_tokens><tool_uses>15</tool_uses><duration_ms>62916</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a1aab1862ee141d54</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a1aab1862ee141d54.output</output-file>
+<status>completed</status>
+<summary>Agent "Review Task 2 (spec + quality)" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>### Spec Compliance
+- ✅ Spec compliant. All five required files are present and their contents match the brief's prescribed code verbatim, including all named interfaces (`create_app()`, `app`, `router`).
+
+### Strengths
+
+- Exact TDD sequence demonstrated: RED run shows `ModuleNotFoundError` on the correct missing module; GREEN run shows 1 passed. Evidence is credible and matches what the diff would produce.
+- All non-empty modules carry `from __future__ import annotations` (`health.py` line 3, `main.py` line 3, `test_health.py` line 3).
+- Type hints present on all public signatures: `liveness() -&gt; dict[str, str]`, `create_app() -&gt; FastAPI`, `test_liveness() -&gt; None`.
+- Google-style docstrings on every public callable (`liveness`, `create_app`).
+- Absolute imports throughout; no wildcard imports.
+- Test uses `TestClient(create_app())` — fresh app per test call, not the module-level singleton. Good isolation.
+- YAGNI discipline: zero scope creep, no speculative middleware or extra endpoints.
+- `StarletteDeprecationWarning` is correctly diagnosed as originating from fastapi's bundled `testclient.py` (a third-party dependency boundary), not from this task's code. No action required here.
+
+### Issues
+
+#### Critical (Must Fix)
+None.
+
+#### Important (Should Fix)
+None.
+
+#### Minor (Nice to Have)
+
+- `tests/api/test_health.py:10–11` — `test_liveness` constructs a `TestClient` inline inside the test body. For a single test this is fine, but the brief's global constraints specify `asyncio_mode = "auto"` and pytest fixtures as the standard pattern. The test works correctly as written; this is a style note only. No action required unless the suite grows and the pattern becomes inconsistent.
+
+- `src/fold_at_scripps/main.py:61` — The module-level `app = create_app()` executes `get_settings()` at import time. This is required by the brief (it explicitly prescribes this line), so it is not a defect, but it is worth noting for future tasks: if `get_settings()` is cached via `@lru_cache` (as is typical with Pydantic `BaseSettings`), test isolation that needs different settings values will require cache-clearing. This is a downstream concern, not a current issue.
+
+### Assessment
+
+**Task quality:** Approved
+
+**Reasoning:** All five files match the brief's prescribed content exactly; TDD evidence is credible; all global constraints (type hints, `__future__` annotations, docstrings, absolute imports, ruff passing) are satisfied; no scope creep and no correctness issues found.</result>
+<usage><subagent_tokens>23632</subagent_tokens><tool_uses>3</tool_uses><duration_ms>22523</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a395d3f4186553b3f</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a395d3f4186553b3f.output</output-file>
+<status>completed</status>
+<summary>Agent "Implement Task 3: dev Compose stack" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>**Status:** DONE
+
+**Commits created:** `ffd59f3 feat: add dev Docker Compose stack`
+
+**Verification summary:** `docker compose up -d --build` succeeded (postgres healthy, api started); `curl -s localhost:8000/health` returned `{"status":"ok"}`; `docker compose down` tore down cleanly. Port 8000 was briefly occupied by a pre-existing `fold-webapp-web-1` container (stopped temporarily for verification, then restored).
+
+**Concerns:** None — all files match the brief exactly.
+
+**Report:** `/home/briney/git/fold-at-scripps/.superpowers/sdd/task-3-report.md`</result>
+<usage><subagent_tokens>31370</subagent_tokens><tool_uses>17</tool_uses><duration_ms>129282</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>aebefd0a0b995db3b</task-id>
+<tool-use-id>toolu_01TFft9AxuX78NZ5ZoXxGbqX</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/aebefd0a0b995db3b.output</output-file>
+<status>completed</status>
+<summary>Agent "Review Task 3 (spec + quality)" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>### Spec Compliance
+- ✅ Spec compliant — all five required files present, all checked items match the brief exactly.
+
+---
+
+### Strengths
+
+Every field in every file matches the brief verbatim:
+
+- `Dockerfile`: base image `python:3.11-slim`, exact `ENV` block, uv copied from `ghcr.io/astral-sh/uv:latest`, `WORKDIR /app`, correct `COPY` order, `uv sync --frozen`, correct `CMD`.
+- `.dockerignore`: all nine entries from the brief, no omissions or extras.
+- `docker-compose.yml`: service names `postgres` / `api`; `postgres:16`; credentials `fold`/`fold`/`fold_at_scripps`; ports `5432:5432` and `8000:8000`; `pgdata` volume; healthcheck `["CMD-SHELL", "pg_isready -U fold -d fold_at_scripps"]` with interval/timeout/retries matching the brief; `FOLD_DATABASE_URL` host is `postgres` (matching the service name); `./src:/app/src` volume; `depends_on` with `service_healthy`.
+- `.env.example`: comment, `FOLD_DEBUG=false`, `FOLD_DATABASE_URL` pointing to `localhost:5432` (correct for non-container local dev).
+- `README.md`: existing `# fold@Scripps` heading preserved; `## Development` section appended as inner markdown (no outer ` ```markdown ` fence wrapper); all commands match the brief; the closing ` ``` ` for the second code block is present and clean.
+
+Internal consistency is solid: the `FOLD_DATABASE_URL` in `docker-compose.yml` uses host `postgres`, which is the Compose service name (`docker-compose.yml:110`); the `.env.example` correctly uses `localhost` for non-container use (`env.example:3`). No credential drift anywhere across files.
+
+---
+
+### Issues
+
+#### Critical (Must Fix)
+None.
+
+#### Important (Should Fix)
+None.
+
+#### Minor (Nice to Have)
+
+**`Dockerfile:14` — no `--no-dev` flag on `uv sync --frozen`.**
+The brief does not specify `--no-dev`, so this is not a compliance failure. However, `uv sync --frozen` without `--no-dev` installs dev dependencies (pytest, ruff, etc.) into the container image, adding unnecessary size and attack surface for a dev image. The brief defers production hardening, so this is acceptable for now but worth a follow-up note.
+
+**`docker-compose.yml` — no `restart` policy on the `api` service.**
+If the API container exits before Postgres finishes initializing (edge case given `service_healthy`, but possible on very slow hosts), it will not restart. Not a blocking issue for a dev stack, but `restart: on-failure` is a common hardening step.
+
+---
+
+### Assessment
+**Task quality:** Approved
+
+**Reasoning:** Every file matches the brief exactly — service names, ports, credentials, env var names, healthcheck command, Dockerfile instructions, and README append are all correct and internally consistent. The two minor observations are outside the brief's scope for this task.</result>
+<usage><subagent_tokens>23859</subagent_tokens><tool_uses>3</tool_uses><duration_ms>23000</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a1e4ec97be1429b22</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a1e4ec97be1429b22.output</output-file>
+<status>completed</status>
+<summary>Agent "Implement Task 4: async DB + readiness" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>---
+
+**Status:** DONE_WITH_CONCERNS
+
+**Commits created:** `43e1329 feat: add async DB engine and readiness check`
+
+**Test summary:** 5/5 passing incl. 3 integration (2 readiness, 1 db engine), output pristine (1 pre-existing starlette deprecation warning)
+
+**Concern:** `tests/conftest.py` was modified beyond the brief's listed files. The module-level `_engine`/`_sessionmaker` singletons in `db.py` are bound to the asyncio event loop at creation time; pytest-asyncio creates a new loop per test, causing a `RuntimeError: Task got Future attached to a different loop` when the full suite ran. Added an `_reset_db_singletons` autouse fixture that nulls the globals before/after each test. This is the canonical fix for this pattern. Additionally, `# noqa: B008` was added to the `readiness` function signature to suppress ruff's objection to `Depends()` in a default argument — this is the standard FastAPI idiom and the suppression is narrow and justified.
+
+**Report:** `/home/briney/git/fold-at-scripps/.superpowers/sdd/task-4-report.md`</result>
+<usage><subagent_tokens>38221</subagent_tokens><tool_uses>32</tool_uses><duration_ms>137523</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a83cb7fcb61c56b04</task-id>
+<tool-use-id>toolu_011vsiKLXyVYwuyW3YHoPGWs</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a83cb7fcb61c56b04.output</output-file>
+<status>completed</status>
+<summary>Agent "Review Task 4 (spec + quality)" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>I have everything I need for the review. Here is my assessment:
+
+---
+
+### Spec Compliance
+
+- ✅ `src/fold_at_scripps/db.py` created with exact interfaces: `get_engine()`, `get_sessionmaker()`, `get_session()` — correct names, signatures, and return types.
+- ✅ `GET /health/ready` returns `{"status": "ready"}` and queries DB via `SELECT 1`.
+- ✅ `tests/test_db.py` created with `test_engine_connects` marked `@pytest.mark.integration`, body matches spec verbatim.
+- ✅ `tests/api/test_health.py` readiness test uses `ASGITransport` + `AsyncClient`, matches spec verbatim.
+- ✅ `db.py` consumes `fold_at_scripps.config.get_settings` as specified.
+- ✅ TDD RED/GREEN evidence is credible and matches expected failure modes.
+- ✅ Commit message, staged files match brief's Step 11.
+- ⚠️ Cannot verify from diff: `asyncio_mode = "auto"` is set in `pyproject.toml` — the async tests run without explicit `@pytest.mark.asyncio`, which implies it is set, but `pyproject.toml` is not in the diff. The integration tests passing confirms it indirectly.
+
+---
+
+### Strengths
+
+- `db.py` is a verbatim match to the spec's implementation, with no gold-plating: lazy singletons, `pool_pre_ping=True`, `expire_on_commit=False`, and a clean generator-based `get_session`.
+- `health.py` is a clean diff — only what's needed is added; the liveness handler is untouched.
+- The `_reset_db_singletons` fixture is well-documented with a precise, technically accurate docstring explaining the event-loop binding problem. The fixture is minimal: two null assignments before and after, nothing else.
+- All files carry `from __future__ import annotations`, type hints on every signature, and Google-style docstrings. No wildcard imports, no `os.path`, no bare `except`.
+- The `_clear_settings_cache` pattern from the existing conftest is correctly preserved; the new fixture follows the same structure.
+
+---
+
+### Issues
+
+#### Critical (Must Fix)
+
+None.
+
+#### Important (Should Fix)
+
+**`src/fold_at_scripps/api/health.py:41` — `# noqa: B008` is missing the required explanatory comment.**
+
+```python
+async def readiness(session: AsyncSession = Depends(get_session)) -&gt; dict[str, str]:  # noqa: B008
+```
+
+The project rule states: *"do not add `# type: ignore`/suppressions without a specific error code AND a comment explaining why."* The suppression carries `B008` (the specific error code — correct), but has no inline explanation of why. The report's rationale ("canonical FastAPI dependency injection pattern") belongs on the line, not only in the report. The fix is one-line:
+
+```python
+async def readiness(session: AsyncSession = Depends(get_session)) -&gt; dict[str, str]:  # noqa: B008 — FastAPI Depends() in a default arg is the canonical DI pattern; B008 is a false positive here
+```
+
+This is an explicit project constraint, not a style preference. The suppression is technically correct and minimal; the error code is present; only the inline explanation is missing.
+
+#### Minor (Nice to Have)
+
+**`tests/conftest.py:146` — `_reset_db_singletons` is `autouse=True` globally, running for every test including non-async unit tests.**
+
+The fixture is an `Iterator[None]` (synchronous), so it does not cause errors in non-async tests, and the null assignments are essentially free. But future readers may wonder why the DB module is being mutated for config-only tests. Scoping it to the `integration` marker (or to `tests/test_db.py` and `tests/api/`) would be more precise. This is a cosmetic point — the current form is correct and causes no failures.
+
+**`src/fold_at_scripps/db.py:86–89` — `get_session` declared `async def` but typed as returning `AsyncIterator[AsyncSession]`, with no `@asynccontextmanager`.**
+
+This is valid FastAPI generator-dependency syntax: an `async def` with `yield` implicitly creates an async generator. FastAPI handles it correctly. However, the return annotation `AsyncIterator[AsyncSession]` is technically imprecise — the actual type is `AsyncGenerator[AsyncSession, None]`, which is a subtype of `AsyncIterator`. In practice this causes no runtime issue and mirrors the spec's verbatim code, so it is not a defect introduced by this implementer. Noting it for awareness only.
+
+---
+
+### Assessment
+
+**Task quality: Approved — fix the `# noqa` comment before merging.**
+
+The implementation is correct, complete, and minimal. One Important finding: the `B008` suppression violates the project's explicit rule requiring an inline explanatory comment alongside the error code. The `_reset_db_singletons` deviation is justified, correctly diagnosed, and minimal. The Starlette deprecation warning is correctly attributed to the pre-existing `test_liveness` test using `TestClient`, not to this task's changes.</result>
+<usage><subagent_tokens>26148</subagent_tokens><tool_uses>3</tool_uses><duration_ms>34728</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a308f6835089c5092</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a308f6835089c5092.output</output-file>
+<status>completed</status>
+<summary>Agent "Fix Task 4 B008 suppression finding" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>---
+
+**Status:** DONE
+
+Commit created: `e2307cf fix: allow FastAPI Depends in arg defaults via ruff config; drop B008 noqa`
+
+One-line check summary: ruff clean, format clean, 2/2 health tests pass
+
+Report file: `/home/briney/git/fold-at-scripps/.superpowers/sdd/task-4-report.md`</result>
+<usage><subagent_tokens>25316</subagent_tokens><tool_uses>12</tool_uses><duration_ms>45393</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>ac6fb0ec15cf90962</task-id>
+<tool-use-id>toolu_01VgeK18trAmzHnhtbtVJgqy</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/ac6fb0ec15cf90962.output</output-file>
+<status>completed</status>
+<summary>Agent "Re-review Task 4 after fix" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>### Spec Compliance
+- Spec compliant
+
+### Issues
+
+#### Critical (Must Fix)
+None.
+
+#### Important (Should Fix)
+None. The previously-flagged `# noqa: B008` suppression is confirmed gone. `health.py` line 77 in the diff reads:
+
+```python
+async def readiness(session: AsyncSession = Depends(get_session)) -&gt; dict[str, str]:
+```
+
+No suppression comment present. The line is 76 characters, well within the 100-char limit.
+
+#### Minor (Nice to Have)
+
+**`pyproject.toml` — `extend-immutable-calls` list breadth is not wrong but is forward-looking.** Only `fastapi.Depends` is actually used in the current codebase; the other eight entries (`Query`, `Path`, `Header`, `Body`, `Form`, `File`, `Cookie`, `Security`) are preemptive. This is not a defect — they are the standard FastAPI injection callables and adding them now prevents future B008 fires — but reviewers should be aware this was a deliberate choice, not cargo-culting. No action required.
+
+**`tests/conftest.py:182-194` — `_reset_db_singletons` resets before and after each test but does not close the engine.** Setting `_engine = None` discards the reference without calling `await engine.dispose()`. For the current test suite this is harmless (pytest-asyncio's event loop teardown will GC the engine and close connections), but it can surface "Event loop is closed" warnings in asyncio debug mode. This is a very minor quality concern, not a correctness defect.
+
+---
+
+### Assessment
+
+**Task quality:** Approved
+
+**Reasoning:** The Important issue from the first review is cleanly resolved — the `# noqa: B008` suppression is gone and replaced with correct ruff configuration rather than just a comment — and all other task requirements (interfaces in `db.py`, readiness endpoint, integration-marked tests, `_reset_db_singletons` fixture, `from __future__ import annotations` in every new module, Google-style docstrings, type hints on all signatures) are fully satisfied with no regressions introduced.</result>
+<usage><subagent_tokens>24744</subagent_tokens><tool_uses>2</tool_uses><duration_ms>16717</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a02f7d4d20e38cdc2</task-id>
+<tool-use-id>toolu_01V8WqSmEDV5hHZuKQjs55z5</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a02f7d4d20e38cdc2.output</output-file>
+<status>completed</status>
+<summary>Agent "Implement Task 5: CI workflow" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>---
+
+**Status:** DONE
+
+**Commits created:** `a6aa824 ci: add lint and test workflow`
+
+**Summary:** CI workflow added; local suite 5/5 pass, ruff clean (check + format --check both pass).
+
+**Concerns:** One minor warning from pytest output — `httpx` deprecation in fastapi's testclient suggesting `httpx2` — but this is a third-party library warning, not a test failure, and not something this task is responsible for.
+
+**Report file:** `/home/briney/git/fold-at-scripps/.superpowers/sdd/task-5-report.md`</result>
+<usage><subagent_tokens>25106</subagent_tokens><tool_uses>11</tool_uses><duration_ms>55875</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a30b9fd3968a9016d</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a30b9fd3968a9016d.output</output-file>
+<status>completed</status>
+<summary>Agent "Review Task 5 (spec + quality)" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>### Spec Compliance
+- ✅ Spec compliant — the workflow file matches the brief exactly, verbatim.
+
+Verified against diff lines:
+- Triggers (diff:19-22): `push: branches: [main]` and `pull_request` — matches brief.
+- Postgres service (diff:28-40): image `postgres:16`, credentials `POSTGRES_USER: fold` / `POSTGRES_PASSWORD: fold` / `POSTGRES_DB: fold_at_scripps`, port `5432:5432`, healthcheck `pg_isready -U fold -d fold_at_scripps` with 5s interval / 3s timeout / 10 retries — matches brief exactly.
+- `FOLD_DATABASE_URL` (diff:42): `REDACTED` at job level — matches brief exactly.
+- Steps (diff:43-54): checkout@v4 → astral-sh/setup-uv@v5 → `uv sync --frozen` → `ruff check .` → `ruff format --check .` → `pytest -v` — matches brief exactly.
+
+⚠️ Cannot verify from diff: consistency of `FOLD_DATABASE_URL` with `docker-compose.yml` and `Settings` defaults (those files are not in this diff). The report claims consistency, but this cannot be confirmed from the single-file diff. Not a blocker since the workflow itself is self-consistent and the credentials are the explicit values specified in the global constraints.
+
+---
+
+### Strengths
+
+- The file is an exact faithful transcription of the brief's spec — no drift, no omissions, no additions.
+- `FOLD_DATABASE_URL` is set at the job level (diff:41), making it available to all steps including pytest, which is the correct placement.
+- The healthcheck on the Postgres service container (`pg_isready -U fold -d fold_at_scripps`, 10 retries) is properly configured — this prevents the test step from starting before the database is actually ready to accept connections.
+- Action versions are current and sensible: `actions/checkout@v4`, `astral-sh/setup-uv@v5`.
+- `uv sync --frozen` is correct for CI: it enforces the lockfile rather than silently updating it.
+- `--health-timeout 3s` with `--health-interval 5s` and 10 retries gives 50 seconds of grace, which is adequate for Postgres cold-start on GitHub-hosted runners.
+- YAML structure and indentation are valid; the folded block scalar (`&gt;-`) on `options` is the idiomatic way to pass multiple Docker flags without quoting headaches.
+
+---
+
+### Issues
+
+#### Critical (Must Fix)
+None.
+
+#### Important (Should Fix)
+None.
+
+#### Minor (Nice to Have)
+
+**`.github/workflows/ci.yml`:27 — No explicit Python version pin**
+
+The `astral-sh/setup-uv@v5` action will install uv and then `uv sync --frozen` will use whatever Python is available on the runner (currently `ubuntu-latest` ships Python 3.12). The brief does not require a Python pin, so this is not a spec violation. However, the local suite ran against Python 3.14.3 (visible in the report), meaning the CI Python version differs from the dev environment. This could mask incompatibilities in either direction. A `python-version: "3.14"` field on the `setup-uv` action, or an explicit `actions/setup-python@v5` step, would make CI more faithful to the dev environment.
+
+```yaml
+- name: Install uv
+  uses: astral-sh/setup-uv@v5
+  with:
+    python-version: "3.14"
+```
+
+**`.github/workflows/ci.yml`:25 — No `env` set for `services` to inherit `FOLD_DATABASE_URL`**
+
+This is not actually a bug — the Postgres service container does not need `FOLD_DATABASE_URL`; it reads `POSTGRES_*` variables. The job-level `env` is correctly scoped for the steps. Mentioned only for completeness; no action needed.
+
+---
+
+### Assessment
+**Task quality:** Approved
+
+**Reasoning:** The workflow is a verbatim, exact implementation of the spec with correct Postgres credentials, healthcheck, `FOLD_DATABASE_URL` placement, uv usage, and all three required quality-gate steps in the right order; the only gap (no Python version pin) is a minor hygiene note not required by the brief.</result>
+<usage><subagent_tokens>23410</subagent_tokens><tool_uses>3</tool_uses><duration_ms>27791</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a5c8ee5d46f33040b</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a5c8ee5d46f33040b.output</output-file>
+<status>completed</status>
+<summary>Agent "Final whole-branch review" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>That's fine — I have enough from the diff and progress notes to assess. The StarletteDeprecationWarning is confirmed (per the T2 note) to originate from FastAPI's bundled `TestClient` (a dependency), not project code. That's a dependency-internal warning the project cannot fix without switching test clients.
+
+I now have a complete picture. Here is my review.
+
+---
+
+### Strengths
+
+- **Clean, idiomatic foundation.** Every module has `from __future__ import annotations`, Google-style docstrings, full type hints, and absolute imports — consistent with the plan's global constraints and the user's style guide. `config.py:10-22`, `db.py`, `main.py`, `health.py` are all tidy and minimal.
+- **Lazy singleton DB layer is the right call.** `db.py:18-26` defers engine creation until first use, so importing the package (e.g. for `--help` or unit tests that never touch the DB) never opens a connection. `pool_pre_ping=True` is a sound default for a long-lived service that will face transient Postgres disconnects.
+- **Integration tests verify real behavior.** `test_db.py:12-15` and the readiness test in `test_health.py:19-25` both hit a real Postgres through a real `ASGITransport`/session — nothing is mocked. The `integration` marker plus CI's Postgres service means these actually exercise connectivity in CI (`ci.yml:90-103` sets `FOLD_DATABASE_URL` and runs unfiltered `pytest -v`).
+- **The `_reset_db_singletons` fixture (conftest.py:19-32) is a justified, well-documented deviation.** Its docstring correctly explains the event-loop-binding problem: pytest-asyncio creates a fresh loop per test, and a module-level engine created under a prior (now-closed) loop would break. Resetting the globals is the correct fix and the seam is clean. This is a real improvement over the brief's file list, not scope creep.
+- **`extend-immutable-calls` (pyproject.toml:35-46) is cleaner than the `# noqa: B008` it replaced** and pre-registers all FastAPI injectors, so future endpoints using `Query`/`Body`/etc. won't trip B008. Forward-looking without being speculative code.
+- **CI and Compose are faithful to the plan** and share the same Postgres credentials/healthcheck, so local and CI environments match.
+
+### Minor-findings triage
+
+- **[T1] `test_settings_defaults` doesn't assert `database_url` default** — *defer (low value).* The env-read test already covers `database_url`; asserting the hardcoded default adds little and couples the test to a literal. Optional one-liner if desired.
+- **[T1] `filterwarnings = ["error"]` once suite grows** — *defer-to-later-plan.* Premature now precisely because of the unfixable StarletteDeprecationWarning (see below); revisit when that warning is gone.
+- **[T1] `__init__.py` lacks `from __future__ import annotations`** — *defer (harmless).* The module has no annotations; the global constraint is satisfied in spirit. Add it for uniformity if touching the file anyway.
+- **[T2] `TestClient` constructed inline** — *defer.* Fine at two tests; promote to a fixture when the API suite grows.
+- **[T2] StarletteDeprecationWarning from bundled TestClient** — *defer (not fixable here).* See Important issue below for the assessment.
+- **[T3] Dockerfile installs dev deps (no `--no-dev`)** — *defer-to-deployment-plan.* Explicitly a dev image per plan non-goals.
+- **[T3] `api` service has no restart policy** — *defer-to-deployment-plan.* Production hardening is out of scope.
+- **[T4] `_reset_db_singletons` nulls `_engine` without `await engine.dispose()`** — *defer (with a note).* Harmless today; could emit "Event loop is closed" under asyncio debug mode. Worth fixing when a real async teardown fixture exists. See Minor below.
+- **[T4] `extend-immutable-calls` lists all injectors** — *no action; accept as intentional.*
+- **[T5] No Python version pin in CI** — **fix-before-merge (cheap, prevents drift).** See Important below.
+
+### Issues
+
+#### Critical (Must Fix)
+None. The foundation is correct and boots; tests verify real behavior.
+
+#### Important (Should Fix)
+
+- **CI has no Python version pin — `ci.yml:92-97`.** `setup-uv@v5` with no `python-version` resolves whatever interpreter is on the runner/uv default, while the developer ran 3.14.x (per T5 note) and the Dockerfile pins `python:3.11-slim`. Three different Python versions across dev / CI / runtime is exactly the drift a foundation plan should foreclose, and a 3.11-vs-3.14 mismatch can mask version-specific failures until a later plan trips on them. *Fix:* pin `setup-uv` with `python-version: "3.11"` (or add `.python-version`), matching the Dockerfile and `requires-python`. Cheap, and it makes CI faithful to the deployment target. (I'd actually rate this borderline Critical for a "tested foundation every later plan builds on," but it doesn't break the current build, so Important.)
+
+- **Readiness endpoint returns 500, not 503, when the DB is down — `health.py:21-24`.** `await session.execute(text("SELECT 1"))` raises on connection failure, which FastAPI surfaces as an unhandled 500. A readiness probe's contract is "return non-2xx (conventionally 503) when not ready" — orchestrators (k8s, the planned scheduler/deploy) distinguish 503 from 500. As written, an unreachable DB looks like an application crash rather than "not ready yet." *Assessment:* the plan only specified the happy path and no test covers the failure case, so this is faithful to the brief — but it's a foundation seam that later plans (health-gated deploys) will build on, so I'd fix it now: wrap in `try/except` and raise `HTTPException(status_code=503, detail="database unavailable")`, with a non-integration test asserting 503 against a bad `FOLD_DATABASE_URL`. At minimum, flag it explicitly for the deployment plan.
+
+- **Test output is *not* fully pristine: recurring StarletteDeprecationWarning.** Per T2 this comes from FastAPI's bundled `TestClient` (a dependency), not project code, so it cannot be silenced by fixing our code. *Assessment:* acceptable to merge — it's third-party and the only sync-client test is `test_liveness`. But do **not** add `filterwarnings = ["error"]` until it's resolved (it would fail the suite). Best low-cost mitigation if you want clean output: a narrowly-scoped `filterwarnings` ignore in `pyproject.toml` keyed to that specific warning/module, with a comment, rather than a global suppression. Defer is fine; just don't lose track of it.
+
+#### Minor (Nice to Have)
+
+- **No graceful engine disposal anywhere — `db.py` / `main.py`.** There's no FastAPI `lifespan`/shutdown hook calling `await get_engine().dispose()`, and the test fixture (conftest.py:30-32) drops the engine reference without disposing it. Harmless at this scope (process exit reclaims sockets), but a lifespan shutdown is the natural home for clean pool teardown and will be wanted once real DB work lands. Add an `await engine.dispose()` in the conftest teardown and a `lifespan` shutdown handler in a later plan.
+- **`integration`-marked tests fail (not skip) when Postgres is absent — conftest.py / pyproject.toml:23-26.** The marker is registered but nothing auto-skips it without a DB. A developer following the README who forgets `docker compose up -d postgres` gets red failures, not informative skips. Consider a `pytest_collection_modifyitems` hook (or a `--run-integration` opt-in) that skips integration tests when `FOLD_DATABASE_URL` is unreachable/unset. Documented in the README, so low severity, but it's a friction point for a repo many people will clone.
+- **`api` Compose service bind-mounts `./src` but the image was built with deps installed, not the source as editable in a way that reflects live edits to deps** — `docker-compose.yml:23-24`. Live-reload of `src` works, but there's no `--reload` flag on the container `CMD` (Dockerfile:15), so edits to mounted `src` won't actually hot-reload in the container. Minor dev-ergonomics gap; either add `--reload` for the compose dev target or document that the container needs a restart on edits.
+
+### Recommendations (later plans / process)
+
+- **Data-model plan:** introduce a SQLAlchemy declarative `Base` and an Alembic setup; the lazy-engine seam here is ready for it. Add the `lifespan` shutdown disposal at the same time.
+- **Deployment plan:** multi-stage Dockerfile with `--no-dev`, `restart: on-failure`, the 503 readiness contract, and the CI Python pin (if not done now) all belong together. The current single-stage image and dev-dep install are correctly deferred.
+- **Process:** the per-task ledger in `progress.md` worked well — the Minor findings were accurate and well-triaged. Keep that pattern.
+
+### Assessment
+
+**Ready to merge?** With fixes.
+
+**Reasoning:** The foundation is correct, idiomatic, and its tests verify real behavior against real Postgres — no Critical issues. Before merge I'd pin the CI Python version (cheap, prevents the dev/CI/runtime version drift a foundation must avoid) and decide on the 503 readiness contract (fix now or explicitly defer to the deployment plan); everything else is safely deferrable.</result>
+<usage><subagent_tokens>43173</subagent_tokens><tool_uses>6</tool_uses><duration_ms>82617</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>acd26496ca8b637d5</task-id>
+<tool-use-id>toolu_01VxKo3WvUoboyQo9XLDpVHA</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/acd26496ca8b637d5.output</output-file>
+<status>completed</status>
+<summary>Agent "Apply final-review fixes" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>---
+
+**Status:** DONE
+
+Commit created: `55d9084` — fix: pin CI python, 503 readiness on DB failure, pristine test output
+
+6/6 tests pass, output is pristine — `StarletteDeprecationWarning` is gone (TestClient removed); ruff check and format both clean.
+
+Report: `/home/briney/git/fold-at-scripps/.superpowers/sdd/final-review-fixes-report.md`</result>
+<usage><subagent_tokens>25833</subagent_tokens><tool_uses>15</tool_uses><duration_ms>60946</duration_ms></usage>
+</task-notification>
+
+---
+
+option 2
+
+---
+
+PR is merged and branch deleted. Go ahead with drafting plan 2
+
+---
+
+commit straight to main, then subagent-driven execution
+
+---
+
+<task-notification>
+<task-id>aa040f2d5e9839aab</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/aa040f2d5e9839aab.output</output-file>
+<status>completed</status>
+<summary>Agent "Implement P2 Task 1: base/mixins/enums" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>---
+
+**Status:** DONE
+
+**Commits created:** `a63c7b3 feat: add ORM base, mixins, and enums`
+
+**Test summary:** 9 passed in 0.15s (3 new model unit tests + 6 existing Plan 1 integration/unit tests); ruff format + check clean.
+
+**Concerns:** None.
+
+**Report:** `/home/briney/git/fold-at-scripps/.superpowers/sdd/task-1-report.md`</result>
+<usage><subagent_tokens>33587</subagent_tokens><tool_uses>21</tool_uses><duration_ms>127511</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>ac63da2026faf0def</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/ac63da2026faf0def.output</output-file>
+<status>completed</status>
+<summary>Agent "Review P2 Task 1 (spec + quality)" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>### Spec Compliance
+
+- ✅ `src/fold_at_scripps/models/__init__.py` created with correct re-exports
+- ✅ `src/fold_at_scripps/models/base.py` created with `Base`, `UUIDPKMixin`, `TimestampMixin`, `str_enum`
+- ✅ `src/fold_at_scripps/models/enums.py` created with `UserRole`, `UserTier`, `UserStatus`, `RunStatus`
+- ✅ `tests/models/__init__.py` created (empty)
+- ✅ `tests/models/test_enums.py` matches brief spec verbatim
+- ✅ `tests/models/test_base.py` matches brief spec verbatim
+- ✅ `Base` subclasses `DeclarativeBase` with `MetaData(naming_convention=NAMING_CONVENTION)`
+- ✅ All five naming convention keys present: `ix`, `uq`, `ck`, `fk`, `pk`
+- ✅ `UUIDPKMixin.id: Mapped[uuid.UUID]` with `default=uuid.uuid4`
+- ✅ `TimestampMixin` uses `server_default=func.now()` and `onupdate=func.now()`, `DateTime(timezone=True)`
+- ✅ `str_enum` sets `native_enum=False` and `values_callable` storing enum values (not names)
+- ✅ All four enums are `StrEnum` with lowercase values
+- ✅ All specified names re-exported from `fold_at_scripps.models` with `__all__`
+- ✅ `from __future__ import annotations` in all three source modules and both test files
+- ✅ Google-style docstrings on all public classes and the `str_enum` function
+- ✅ Type hints on `str_enum` signature (`enum_cls: type[enum.StrEnum]) -&gt; SAEnum`)
+- ✅ Absolute imports only throughout
+- ✅ Enum values are lowercase (e.g. `"admin"`, not `"ADMIN"`)
+- ✅ TDD: RED phase confirmed `ModuleNotFoundError`; GREEN phase shows 3 passed; lint clean; full suite 9 passed
+
+### Strengths
+
+The implementation is a clean, faithful transcription of the brief. `str_enum` correctly combines `native_enum=False` with `values_callable=lambda cls: [member.value for member in cls]`, guaranteeing that enum member values (not names) are written to the VARCHAR column and appear in the CHECK constraint — the key correctness requirement. The `NAMING_CONVENTION` dict covers exactly the five Alembic-standard keys with the correct SQLAlchemy interpolation tokens; the `Base.metadata` assignment follows the recommended pattern for Alembic compatibility. `TimestampMixin` correctly uses `server_default` (not Python-side `default`) for both columns and `onupdate` for `updated_at`, ensuring DB-side time generation. The `length=max(...)` in `str_enum` is a thoughtful addition that right-sizes the VARCHAR column without being asked. Test coverage directly exercises the contract properties (`native_enum is False`, `enums == [...]`, naming-convention key set, enum value equality and ordering).
+
+### Issues
+
+#### Critical (Must Fix)
+
+None.
+
+#### Important (Should Fix)
+
+**`base.py:75` — `UUIDPKMixin` mapped column annotation on a plain class**
+
+The mixin class `UUIDPKMixin` is a plain Python class (not inheriting from `Base`). The `Mapped[uuid.UUID]` annotation with `mapped_column` is the correct SQLAlchemy 2.0 pattern for mixins, but it only works when the concrete model class also inherits from `Base` (`DeclarativeBase` subclass). As written this is correct in intent and consistent with SQLAlchemy mixin docs, so this is not a bug per se — but the class has no docstring note and no explicit inheritance from anything. SQLAlchemy mixin classes that use `mapped_column` without inheriting `MappedAsDataclass` or `Base` can be confusing and are sensitive to ordering in multiple-inheritance declarations (`class Foo(UUIDPKMixin, Base)` works; `class Foo(Base, UUIDPKMixin)` may not depending on SA version). A brief usage note in the docstring ("Must appear before `Base` in the MRO") would prevent downstream errors. This is a documentation gap, not a code defect.
+
+#### Minor (Nice to Have)
+
+**`base.py:98` — `values_callable` lambda parameter name shadows the outer parameter**
+
+`values_callable=lambda cls: [member.value for member in cls]` — the lambda parameter `cls` shadows the outer function's `enum_cls` name. This creates no runtime error (the lambda is called by SQLAlchemy with the enum class as argument, not the outer `enum_cls`), and the logic is correct. Renaming the lambda parameter to `e` or `members` would improve clarity: `lambda e: [m.value for m in e]`.
+
+**`base.py:75` — `Uuid` type vs `UUID` type**
+
+SQLAlchemy provides both `sqlalchemy.Uuid` (added in 2.0) and the older `sqlalchemy.dialects.postgresql.UUID`. Using `sqlalchemy.Uuid` is correct for the declared Python 3.11+ / SA 2.0 baseline. No action needed — this is just a confirmation that the choice is intentional and modern.
+
+**`enums.py` — no `__all__`**
+
+`models/enums.py` does not define `__all__`. While the public API is controlled by `models/__init__.py.__all__`, adding `__all__` to `enums.py` is consistent with the project's re-export conventions and makes the module self-documenting. Minor omission given the re-export layer handles it.
+
+### Assessment
+
+**Task quality:** Approved
+
+**Reasoning:** Every interface specified in the brief is implemented correctly, the critical `str_enum` correctness properties (`native_enum=False`, value-not-name storage) are verified by tests that pass, all global constraints (type hints, `from __future__ import annotations`, Google docstrings, `StrEnum`, UTC-aware timestamps) are satisfied, and TDD evidence is complete. The only findings are a documentation gap on mixin MRO ordering and a cosmetic lambda parameter name — neither blocks downstream tasks.</result>
+<usage><subagent_tokens>26236</subagent_tokens><tool_uses>3</tool_uses><duration_ms>37847</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a67eaf3fcd5691891</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a67eaf3fcd5691891.output</output-file>
+<status>completed</status>
+<summary>Agent "Implement P2 Task 2: fixtures + User" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>---
+
+**Status:** BLOCKED
+
+**Commits created:** None (blocked before Step 7/8 per brief instructions)
+
+**Test summary:** 3 tests FAILED — all with `sqlalchemy.exc.InvalidRequestError` at mapper configuration time; `Run` class not found in SQLAlchemy's class registry
+
+**Blocker:** The `User.runs = relationship(back_populates="user")` with `Mapped[list[Run]]` causes SQLAlchemy to fail at mapper configuration when `Run` is not yet registered. `TYPE_CHECKING` + `from __future__ import annotations` does not defer SQLAlchemy 2.x's resolver. Exact error: `When initializing mapper Mapper[User(users)], expression 'Run' failed to locate a name ('Run').` — brief explicitly instructed to stop here and report back rather than improvise a workaround.
+
+**Report file:** `/home/briney/git/fold-at-scripps/.superpowers/sdd/task-2-report.md`</result>
+<usage><subagent_tokens>39339</subagent_tokens><tool_uses>24</tool_uses><duration_ms>136604</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a15f8072f4238415e</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a15f8072f4238415e.output</output-file>
+<status>completed</status>
+<summary>Agent "Implement P2 Task 2 (corrected): fixtures + User" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>---
+
+**Status:** DONE
+
+**Commits created:** `9d37828 feat: add User model and model test fixtures`
+
+**Test summary:** 12/12 passed (3 new User integration tests + 9 pre-existing); ruff format + check clean.
+
+**Concerns:** None.
+
+**Report file:** `/home/briney/git/fold-at-scripps/.superpowers/sdd/task-2-report.md`</result>
+<usage><subagent_tokens>37721</subagent_tokens><tool_uses>27</tool_uses><duration_ms>124760</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a3dfb59ef5151536d</task-id>
+<tool-use-id>toolu_013CQi4MZayA4o8T9WKiyY9L</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a3dfb59ef5151536d.output</output-file>
+<status>completed</status>
+<summary>Agent "Review P2 Task 2 (spec + quality)" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>### Spec Compliance
+
+- ✅ `tests/models/conftest.py` created with `db_session` fixture exactly as specified
+- ✅ `src/fold_at_scripps/models/user.py` created with all required columns: `email`, `display_name`, `hashed_password`, `role`, `tier`, `status`, `max_concurrent_runs_override`
+- ✅ `src/fold_at_scripps/models/__init__.py` modified to export `User` and retain all prior exports
+- ✅ `tests/models/test_user.py` created with all three specified tests verbatim
+- ✅ `User` has NO relationships — no `relationship()`, no `TYPE_CHECKING` import of `Run`, confirmed by full diff scan
+- ✅ `db_session` uses `get_settings().database_url` (real Postgres, not mocked or SQLite)
+- ✅ Fixture performs `drop_all` + `create_all` before yield and `drop_all` + `dispose()` in `finally`
+- ✅ `pytestmark = pytest.mark.integration` present in test file
+- ✅ `from __future__ import annotations` in all four files
+- ✅ Google-style docstrings on all public functions and the `User` class
+- ✅ Type hints on all signatures (`db_session` → `AsyncIterator[AsyncSession]`; test functions → `None`)
+- ✅ Absolute imports only throughout
+- ✅ Enum columns use `str_enum(...)` helper from Task 1
+- ✅ Defaults: `role=UserRole.USER`, `tier=UserTier.STANDARD`, `status=UserStatus.PENDING`
+- ✅ `max_concurrent_runs_override: Mapped[int | None]` with `nullable=True`
+- ✅ `User` inherits `UUIDPKMixin`, `TimestampMixin`, `Base` (UUID PK and timezone-aware timestamps delegated to mixins)
+- ✅ Column sizes match spec: `email` String(320), `display_name` String(200), `hashed_password` String(255)
+- ✅ `email` is `unique=True, index=True`
+- ✅ TDD RED→GREEN evidence matches expected behavior
+- ✅ Commit message `feat: add User model and model test fixtures` in imperative mood
+
+---
+
+### Strengths
+
+- The `db_session` fixture is correct and complete: `drop_all`+`create_all` before yielding, `drop_all`+`dispose()` in `finally`, with the `finally` block guaranteeing teardown even if the test raises. Using `try`/`finally` (rather than a bare `async with`) is the right pattern here.
+- `expire_on_commit=False` on the session maker is a good default for async sessions, preventing lazy-load errors after commit.
+- `test_user_email_unique` correctly tests the constraint at the database level (committing the duplicate, not just adding it) and expects `IntegrityError`.
+- `test_user_role_round_trips_as_value` re-fetches from the DB via `select()` rather than using the in-memory object, which genuinely exercises the column type round-trip through Postgres.
+- The trailing `# NOTE:` comment about the deferred `runs` relationship is a useful signal to future implementers.
+- The diff is exactly the four files specified — no scope creep, no extraneous imports or helpers.
+
+---
+
+### Issues
+
+#### Critical (Must Fix)
+
+None.
+
+#### Important (Should Fix)
+
+None.
+
+#### Minor (Nice to Have)
+
+**`tests/models/conftest.py:97` — Missing `@pytest.mark.asyncio` (or equivalent) decorator on `db_session`**
+
+The fixture is an `async def` decorated with `@pytest_asyncio.fixture`. Whether this runs correctly depends on the `asyncio_mode` configured in `pyproject.toml` (e.g., `asyncio_mode = "auto"` makes the decorator sufficient). The tests themselves are bare `async def` with no `@pytest.mark.asyncio`. This is fine if `asyncio_mode = "auto"` is set, but it is not verifiable from the diff alone.
+
+⚠️ If `asyncio_mode` is not `"auto"` in `pyproject.toml`, the async tests will silently pass without actually running (pytest-asyncio collects them as sync coroutine objects). The TDD evidence (3 passed in 0.11s against a real Postgres) makes it very likely the config is correct, but a reviewer cannot confirm without seeing `pyproject.toml`.
+
+Recommendation: confirm `asyncio_mode = "auto"` (or equivalent `@pytest.mark.asyncio` decoration) is present in project config.
+
+---
+
+### Assessment
+
+**Task quality:** Approved
+
+**Reasoning:** The implementation is a verbatim, correct realization of the brief — all four files are present, all columns match, all three tests exercise real DB behavior, `User` has no relationships, and the fixture lifecycle is correct. No spec gaps or defects were found.</result>
+<usage><subagent_tokens>26014</subagent_tokens><tool_uses>3</tool_uses><duration_ms>30082</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>aadb799e2c1767098</task-id>
+<tool-use-id>toolu_014oF7JjmG5vGuKSBLYoq1DD</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/aadb799e2c1767098.output</output-file>
+<status>completed</status>
+<summary>Agent "Implement P2 Task 3: Tool model" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>---
+
+**Status:** DONE
+- **Commit:** `aa52918` — feat: add Tool catalog model
+- **Tests:** 15/15 passed (3 new Tool integration tests + 12 pre-existing); TDD RED (ImportError) → GREEN (3 passed) confirmed
+- **Concerns:** None
+- **Report:** `/home/briney/git/fold-at-scripps/.superpowers/sdd/task-3-report.md`</result>
+<usage><subagent_tokens>31452</subagent_tokens><tool_uses>18</tool_uses><duration_ms>88597</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a78e943fd622cfb5c</task-id>
+<tool-use-id>toolu_011GkepmsynBJGeziBDYRsR8</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a78e943fd622cfb5c.output</output-file>
+<status>completed</status>
+<summary>Agent "Review P2 Task 3 (spec + quality)" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>### Spec Compliance
+
+- ✅ `src/fold_at_scripps/models/tool.py` created with all required fields: `name`, `version`, `category`, `gpu_count`, `input_schema` (JSONB), `enabled`
+- ✅ `UniqueConstraint("name", "version")` present in `__table_args__` (tool.py:62)
+- ✅ `gpu_count` default=1 (tool.py:67), `enabled` default=True (tool.py:69)
+- ✅ `input_schema` typed as `JSONB` (tool.py:68)
+- ✅ `Tool` has NO relationships — no `runs`, no `TYPE_CHECKING` import of `Run` anywhere in the diff
+- ✅ `Tool` registered in `models/__init__.py` import and `__all__` (__init__.py:24, 31)
+- ✅ `tests/models/test_tool.py` created with all 3 required tests, verbatim-equivalent to brief
+- ✅ All 3 changed files match exactly what the brief specified
+
+---
+
+### Strengths
+
+- The `Tool.runs` deferral comment at tool.py:72 is clear and precise — it names Task 4 and `Run.tool`, so the next implementer knows exactly where to pick up. Not just YAGNI compliance, but active documentation of the gap.
+- `__table_args__` uses a tuple correctly (not a dict), which is required when mixing `UniqueConstraint` with potential future table-level args.
+- `name` gets an `index=True` (tool.py:64) — not required by the brief, but appropriate since `name` is the natural lookup key and adds no risk.
+- The test for same-name-different-version uses `count == 2` after a single session rather than re-querying per row — clean and unambiguous.
+- `from __future__ import annotations` present in all three new files (tool.py:47, test_tool.py:3, __init__.py already had it).
+- Google-style docstring on the class (tool.py:59); module docstring present (tool.py:45).
+
+---
+
+### Issues
+
+#### Critical (Must Fix)
+None.
+
+#### Important (Should Fix)
+None.
+
+#### Minor (Nice to Have)
+
+**tool.py:67-69 — `server_default` missing for DB-level defaults**
+
+`gpu_count` and `enabled` use SQLAlchemy's `default=` (Python-side only), not `server_default=`. This means a row inserted via raw SQL or another ORM session without touching these columns will get `NULL` rather than `1`/`true` at the database level. For a catalog table likely to be seeded or synced from external scripts, a `server_default` of `"1"` / `"true"` would make the schema self-enforcing. The current approach is acceptable for pure-ORM access (which is the stated use case for this task), so this is polish, not a defect.
+
+**test_tool.py:119 — `count == 2` is session-contamination-sensitive**
+
+The assertion `count == 2` assumes a clean database state with no pre-existing `Tool` rows from other tests. If test isolation ever weakens (e.g., a session-scoped fixture is introduced), this test will spuriously fail. A more robust pattern would be `assert count &gt;= 2` or use a dedicated query filtered by `name == "boltz"`. Not a current defect given integration tests likely use transaction rollback per test, but worth noting for future maintainability.
+
+---
+
+### Assessment
+
+**Task quality:** Approved
+
+**Reasoning:** The implementation is a verbatim-faithful execution of the spec — every required field, constraint, default, JSONB type, registration, and test is present; the critical `Tool.runs` prohibition is cleanly respected with an explicit deferral comment. The two minor items (Python-only defaults and a count-based assertion) are not defects under the current integration-test isolation model.</result>
+<usage><subagent_tokens>24536</subagent_tokens><tool_uses>3</tool_uses><duration_ms>32995</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>ae2680d2816c58590</task-id>
+<tool-use-id>toolu_01CUEpeei6DrMPqvq6Gin4tr</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/ae2680d2816c58590.output</output-file>
+<status>completed</status>
+<summary>Agent "Implement P2 Task 4: Run model" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>---
+
+**Status:** DONE
+
+**Commits created:** `07a4173 feat: add Run model`
+
+**Test summary:** 17 passed (2 new Run tests + 15 pre-existing), 0 failed — full suite clean after ruff format + check.
+
+**Concerns:** None.
+
+**Report:** `/home/briney/git/fold-at-scripps/.superpowers/sdd/task-4-report.md`</result>
+<usage><subagent_tokens>38008</subagent_tokens><tool_uses>24</tool_uses><duration_ms>124121</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>ac87ec9a2f5887bf4</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/ac87ec9a2f5887bf4.output</output-file>
+<status>completed</status>
+<summary>Agent "Review P2 Task 4 (spec + quality)" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>### Spec Compliance
+
+- ✅ `src/fold_at_scripps/models/run.py` created with all required fields: `user_id`/`tool_id` FKs, `status` (default QUEUED, indexed), `params` (JSONB), `assigned_gpu_ids` (ARRAY(Integer), nullable), `started_at`/`finished_at`/`wall_time_seconds`/`gpu_seconds`/`error`/`output_dir`/`hidden_at` (all nullable).
+- ✅ `Run.user` relationship with `back_populates="runs"` — diff line 96.
+- ✅ `Run.tool` relationship with `back_populates="runs"` — diff line 97.
+- ✅ No `artifacts` relationship in `run.py`. No `TYPE_CHECKING` import of `Artifact`. The deferred-to-Task-5 constraint is honored.
+- ✅ `User.runs: Mapped[list[Run]]` added with `back_populates="user"` — user.py diff line 181.
+- ✅ `Tool.runs: Mapped[list[Run]]` added with `back_populates="tool"` — tool.py diff line 136.
+- ✅ `back_populates` names match symmetrically on both sides of both relationships.
+- ✅ Composite `Index("ix_runs_user_id_hidden_at", "user_id", "hidden_at")` in `__table_args__` — run.py line 73.
+- ✅ `src/fold_at_scripps/models/__init__.py` updated: `Run` imported and added to `__all__`.
+- ✅ `tests/models/test_run.py` created with both required tests: defaults/relationships and ARRAY round-trip.
+- ✅ Tests exercise `run.user.email` and `run.tool.name` (relationship navigation), `run.status is RunStatus.QUEUED` (default), `run.assigned_gpu_ids == [0, 3]` (ARRAY round-trip).
+- ✅ `from __future__ import annotations` present in all created/modified modules.
+- ✅ `TYPE_CHECKING` guards used in `run.py`, `user.py`, and `tool.py` to prevent circular imports at runtime.
+- ✅ `pytestmark = pytest.mark.integration` set on the test module.
+- ✅ Brief's Step 7 commit instruction said to add only three files; the implementer correctly added all five (including the user.py and tool.py replacements) — this is the right call, not a deviation.
+- ⚠️ `__init__.py` import order: `run` is imported before `tool` and `user` (diff lines 26-28). SQLAlchemy resolves relationships lazily so mapper config should still succeed, but the order `run → tool → user` differs from the natural dependency order (`user`, `tool`, `run`). The full suite passed (17 tests), so there is no runtime failure here, but it is worth noting as an unusual ordering.
+
+---
+
+### Strengths
+
+- Relationship wiring is textbook-correct: both sides of `Run↔User` and `Run↔Tool` have matching `back_populates` strings; SQLAlchemy mapper configuration will validate this at startup (and the passing suite confirms it does).
+- `TYPE_CHECKING` guards on all three modules eliminate the circular-import risk without any `lazy="select"` or string-based target workarounds.
+- `__table_args__` is a single-element tuple (correctly terminated with a trailing comma, implicitly, since SQLAlchemy accepts a tuple) — checked: the composite index and the `UniqueConstraint` in `tool.py` are both preserved correctly.
+- All nullable lifecycle columns (`started_at`, `finished_at`, `wall_time_seconds`, `gpu_seconds`, `error`, `output_dir`, `hidden_at`) are declared with `nullable=True` and typed `| None`, which is consistent throughout.
+- Tests exactly match the brief's prescribed test code (confirmed line-by-line), including the import-sort fix (`Run, RunStatus` alphabetical order) called out in the report.
+- The placeholder `NOTE:` comments from prior tasks are cleanly removed from both `user.py` and `tool.py`.
+
+---
+
+### Issues
+
+#### Critical (Must Fix)
+
+None.
+
+#### Important (Should Fix)
+
+None.
+
+#### Minor (Nice to Have)
+
+**`__init__.py` import order** — `src/fold_at_scripps/models/__init__.py` line 26: `Run` is imported before `Tool` and `User`, even though `Run` depends on both. The import succeeds because SQLAlchemy defers relationship resolution, but a reader scanning the file top-to-bottom sees a dependent imported before its dependencies. Conventional ordering would be: `base` → `enums` → `user` → `tool` → `run`. Fixing this is a one-line reorder with no behavioral impact.
+
+---
+
+### Assessment
+
+**Task quality:** Approved
+
+**Reasoning:** Every required field, constraint, index, relationship, and inverse wire-up is present and correct; the `artifacts` constraint is cleanly respected; all 17 tests pass with real Postgres integration. The sole observation (import order in `__init__.py`) is cosmetic and carries no correctness risk.</result>
+<usage><subagent_tokens>28405</subagent_tokens><tool_uses>3</tool_uses><duration_ms>32679</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a8df5d0aee7bc0a68</task-id>
+<tool-use-id>toolu_01SC94NaHnioQQNYjKJWNJdg</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a8df5d0aee7bc0a68.output</output-file>
+<status>completed</status>
+<summary>Agent "Implement P2 Task 5: Artifact model" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>---
+
+**Status:** DONE
+
+**Commits created:** `21fa1d2 feat: add Artifact model`
+
+**Test summary:** 19 passed, 0 failed — 2 new artifact integration tests (creation + cascade delete) plus all 17 prior tests green.
+
+**Concerns:** None.
+
+**Report file:** `/home/briney/git/fold-at-scripps/.superpowers/sdd/task-5-report.md`</result>
+<usage><subagent_tokens>33517</subagent_tokens><tool_uses>18</tool_uses><duration_ms>100067</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a6fc67b9c6fdf3166</task-id>
+<tool-use-id>toolu_01RyWQ9eiSUTbYFWgKsWBKbs</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a6fc67b9c6fdf3166.output</output-file>
+<status>completed</status>
+<summary>Agent "Review P2 Task 5 (spec + quality)" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>### Spec Compliance
+
+- ✅ `src/fold_at_scripps/models/artifact.py` created
+- ✅ `src/fold_at_scripps/models/__init__.py` updated to export `Artifact`
+- ✅ `tests/models/test_artifact.py` created
+- ✅ `run_id` FK with `ondelete="CASCADE"` (`artifact.py:71`)
+- ✅ `name` column (`artifact.py:73`)
+- ✅ `path` column (`artifact.py:74`)
+- ✅ `content_type` nullable (`artifact.py:75`)
+- ✅ `size_bytes` nullable (`artifact.py:76`)
+- ✅ `created_at` timezone-aware with server default (`artifact.py:77-79`)
+- ✅ `Artifact.run` relationship with `back_populates="artifacts"` (`artifact.py:81`)
+- ✅ `Run.artifacts` relationship with `back_populates="run"` and `cascade="all, delete-orphan"` (`run.py:119-121`)
+- ✅ `TYPE_CHECKING` import of `Artifact` in `run.py` (`run.py:97`)
+- ✅ Cascade test deletes a Run and counts remaining Artifacts via real DB query (`test_artifact.py:167-175`)
+- ✅ `from __future__ import annotations` in all new modules
+- ✅ UUID PK via `UUIDPKMixin`
+- ✅ `Artifact` in `__all__` in `models/__init__.py`
+- ✅ Commit message matches spec: `feat: add Artifact model`
+- ⚠️ `test_artifact_creation` asserts `artifact.run.id == run.id` (line 164) — this lazy-loads the `run` relationship. In an async context without `lazy="selectin"` or explicit `selectinload`, this would normally raise `MissingGreenlet`. The test passed per the report, but the diff alone cannot confirm whether the session's autoflush/state or test fixture setup happens to avoid the error. The `run` relationship on `Artifact` has no explicit `lazy=` setting, which defaults to `"select"` (lazy load). This is unverifiable from the diff alone.
+
+---
+
+### Strengths
+
+- The diff is surgical: `run.py` gets exactly 4 lines (1 import + 3 relationship lines) with zero unintended changes to existing columns or relationships.
+- `ondelete="CASCADE"` on the FK and `cascade="all, delete-orphan"` on the ORM relationship are both present — the two-layer cascade is correctly implemented.
+- `back_populates` names are symmetric: `Artifact.run` ↔ `back_populates="artifacts"` and `Run.artifacts` ↔ `back_populates="run"`. No mismatch.
+- `TYPE_CHECKING` guard in both `artifact.py` and `run.py` correctly prevents circular imports at runtime while preserving type checker visibility.
+- The cascade test (`test_artifact_cascade_delete_with_run`) is a real integration test: it inserts into Postgres, deletes the Run ORM object, commits, then counts surviving Artifact rows with `select(func.count())` — no mocking.
+- `BigInteger` for `size_bytes` is a sound choice for file sizes exceeding 2GB.
+- Column sizing choices (`String(255)` for name, `String(127)` for content type, `Text` for path) are sensible and not over-engineered.
+- `__all__` is kept alphabetically ordered; `Artifact` is inserted at the top of `__all__` correctly.
+
+---
+
+### Issues
+
+#### Critical (Must Fix)
+
+None.
+
+#### Important (Should Fix)
+
+**`artifact.py:81` — `run` relationship missing `lazy="selectin"`**
+
+The relationship `run: Mapped[Run] = relationship(back_populates="artifacts")` uses the default `lazy="select"`, which issues a synchronous lazy load. In an async SQLAlchemy session this raises `sqlalchemy.exc.MissingGreenlet` the moment any code accesses `artifact.run` without an explicit `selectinload`. The test at `test_artifact.py:164` (`assert artifact.run.id == run.id`) accesses this relationship after a `db_session.refresh(artifact)` — if the test fixture uses `expire_on_commit=False` or the session happened to keep the object in its identity map, it can pass by accident without actually exercising a load. Production code that accesses `artifact.run` on a freshly fetched object will fail at runtime.
+
+Fix: add `lazy="selectin"` (matching whatever convention the other models use) or ensure all call sites use `options(selectinload(Artifact.run))`. Whichever pattern the other relationships in this project follow should be applied consistently here.
+
+#### Minor (Nice to Have)
+
+**`test_artifact.py:164` — relationship access without explicit eager load**
+
+Related to the above: the test asserts `artifact.run.id == run.id` after `db_session.refresh(artifact)` but does not pass `attribute_names=["run"]` to `refresh()` or use a `selectinload`. If `lazy="selectin"` is added to the relationship this resolves automatically. If it is not added, the test should load the relationship explicitly (e.g., via `await db_session.refresh(artifact, attribute_names=["run"])` or re-fetching with `options(selectinload(Artifact.run))`).
+
+---
+
+### Assessment
+
+**Task quality:** Approved (with one important fix recommended)
+
+**Reasoning:** All spec requirements are met exactly — correct columns, correct FK with `ondelete="CASCADE"`, correct ORM cascade, symmetric `back_populates`, `TYPE_CHECKING` guard, and a real Postgres cascade test. The one issue (`lazy="select"` on an async relationship) is a latent runtime bug that did not prevent the test suite from passing but will surface in production; it should be addressed before this model is used in application code, but it does not block merging if the project has a consistent async query pattern that always uses explicit `selectinload`.</result>
+<usage><subagent_tokens>26622</subagent_tokens><tool_uses>3</tool_uses><duration_ms>35663</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a60033ce51a11794c</task-id>
+<tool-use-id>toolu_01RcVoyp5wU3GookJ8u5eU5C</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a60033ce51a11794c.output</output-file>
+<status>completed</status>
+<summary>Agent "Fix P2 Task 5 test honesty" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>**Status:** DONE
+- Commit: `01cc70c` — `test: explicitly load Artifact.run so the test exercises a real relationship load`
+- Both artifact tests pass (2/2); `ruff check` and `ruff format --check` both clean
+- Report: `/home/briney/git/fold-at-scripps/.superpowers/sdd/task-5-report.md`</result>
+<usage><subagent_tokens>23113</subagent_tokens><tool_uses>8</tool_uses><duration_ms>35331</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>af2c91b349dfc9f5e</task-id>
+<tool-use-id>toolu_017So3kLXwL1yxYsM4kKQE51</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/af2c91b349dfc9f5e.output</output-file>
+<status>completed</status>
+<summary>Agent "Implement P2 Task 6: supporting entities" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>---
+
+**Status:** DONE
+
+**Commits created:** `915c937` — `feat: add allowlist, reset-token, audit-log, and settings models`
+
+**Test summary:** 24 passed (5 new integration tests GREEN; 19 prior tests continue passing); RED phase confirmed `ImportError` for `AllowedEmail` and `AuditLog` before implementation.
+
+**Concerns:** None.
+
+**Report:** `/home/briney/git/fold-at-scripps/.superpowers/sdd/task-6-report.md`</result>
+<usage><subagent_tokens>33430</subagent_tokens><tool_uses>18</tool_uses><duration_ms>93771</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a4318d6c5c54f6d60</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a4318d6c5c54f6d60.output</output-file>
+<status>completed</status>
+<summary>Agent "Review P2 Task 6 (spec + quality)" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>The diff is complete and readable. I have everything needed for the review.
+
+---
+
+### Spec Compliance
+
+- ✅ `src/fold_at_scripps/models/access.py` created
+- ✅ `src/fold_at_scripps/models/audit.py` created
+- ✅ `src/fold_at_scripps/models/system.py` created
+- ✅ `src/fold_at_scripps/models/__init__.py` modified to register and export all four new symbols
+- ✅ `tests/models/test_access.py` created (verbatim from brief)
+- ✅ `tests/models/test_audit_system.py` created (verbatim from brief)
+- ✅ `AllowedEmail`: `email` unique + indexed, `invited_by_id` FK nullable `ON DELETE SET NULL`, `invite_token` unique nullable, `created_at` with `server_default`
+- ✅ `PasswordResetToken`: `user_id` FK `ON DELETE CASCADE` + indexed, `token_hash` unique, `expires_at`, `used_at` nullable, `created_at` with `server_default`
+- ✅ `AuditLog`: `actor_id` FK nullable `ON DELETE SET NULL` + indexed, `action`, `target_type`/`target_id` nullable, `details` JSONB nullable, `created_at` indexed
+- ✅ `SystemSettings`: int PK, `CheckConstraint("id = 1", name="single_row")`, `maintenance_mode` bool default False, `updated_at`
+- ✅ `UUIDPKMixin` used for the three UUID-PK models; `SystemSettings` uses its own `id: int` PK without the mixin (correct per spec)
+- ✅ `from __future__ import annotations` present in all three model modules and both test files
+- ✅ Google-style docstrings on all public classes
+- ✅ All four entities present in `__all__` in `models/__init__.py`
+- ✅ TDD RED/GREEN evidence matches brief's expected output exactly
+- ✅ Full suite 24 passed; ruff clean
+
+---
+
+### Strengths
+
+- The implementation is a faithful, disciplined execution of the brief — no additions, no omissions, no creative departures.
+- `SystemSettings.CheckConstraint` is database-enforced (`CHECK (id = 1)`) rather than just application-level, and the test confirms Postgres raises `IntegrityError` for `id=2` — the singleton guarantee is real.
+- `PasswordResetToken` cascade test deletes the user and verifies via a raw `COUNT` query rather than a SQLAlchemy ORM lookup; this is the correct way to confirm a DB-level cascade actually fired.
+- `onupdate=func.now()` on `SystemSettings.updated_at` is a good addition that covers automatic timestamp refresh on row mutation — not called out in the brief but entirely appropriate and non-speculative.
+- `actor_id` index on `AuditLog` is correct: audit queries almost always filter by actor.
+- `ruff format` caught and fixed the one line exceeding 100 chars (`used_at` in `access.py`); the committed file is clean.
+
+---
+
+### Issues
+
+#### Critical (Must Fix)
+
+None.
+
+#### Important (Should Fix)
+
+**`system.py:19` — `maintenance_mode` SQLAlchemy-side `default` is not a `server_default`**
+
+`maintenance_mode: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)`
+
+The `default=False` is a Python/ORM-side default. It works for ORM-constructed objects, but if a row is ever inserted via raw SQL (migrations, fixtures, manual psql) it will `NULL` if the column has no `server_default`. The brief's code is identical here — this is not a deviation from spec — but it is a latent schema hazard. The safe fix is to add `server_default=false()` (importing `false` from `sqlalchemy`) alongside the ORM `default`:
+
+```python
+from sqlalchemy import Boolean, CheckConstraint, DateTime, Integer, false, func
+
+maintenance_mode: Mapped[bool] = mapped_column(
+    Boolean, default=False, server_default=false(), nullable=False
+)
+```
+
+This is a should-fix, not critical, because all current insert paths go through the ORM.
+
+#### Minor (Nice to Have)
+
+**`access.py:77` — `email` index is redundant given the unique constraint**
+
+`email: Mapped[str] = mapped_column(String(320), unique=True, index=True, nullable=False)`
+
+`unique=True` already causes SQLAlchemy/Postgres to create a unique index; `index=True` generates a second, non-unique index on the same column. This wastes space and write overhead. The `index=True` argument should be removed. Again, this matches the brief verbatim — not an implementer error — but it is a schema cleanness issue worth flagging.
+
+---
+
+### Assessment
+
+**Task quality:** Approved
+
+**Reasoning:** The implementation faithfully satisfies every spec requirement — correct FK semantics, constraint types, nullability, indexing, JSONB, singleton enforcement, and `__all__` registration — with real database-level tests that prove the constraints work. The two findings (server_default gap on `maintenance_mode`, redundant index on `email`) are inherited from the brief itself and do not block trust in the output.</result>
+<usage><subagent_tokens>28714</subagent_tokens><tool_uses>3</tool_uses><duration_ms>34225</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>aa3d552a92a6f9861</task-id>
+<tool-use-id>toolu_01XbM59xeobs1DRKRu1bZwhv</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/aa3d552a92a6f9861.output</output-file>
+<status>completed</status>
+<summary>Agent "Apply schema-hygiene fixes" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>**Status:** DONE
+- **Commit:** `8ebd468` — `refactor(models): add server_default to defaulted columns; drop redundant email indexes`
+- **Checks:** 24 passed, ruff clean (All checks passed! / 32 files already formatted)
+- **Report:** `/home/briney/git/fold-at-scripps/.superpowers/sdd/task-6-report.md`</result>
+<usage><subagent_tokens>27762</subagent_tokens><tool_uses>21</tool_uses><duration_ms>58587</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>ab5440c1ced382599</task-id>
+<tool-use-id>toolu_01WcLGiGaSYASK3PK5VhG9T5</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/ab5440c1ced382599.output</output-file>
+<status>completed</status>
+<summary>Agent "Implement P2 Task 7: Alembic migration" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>**Status:** DONE
+
+**Commits created:** `2b98303 feat: add Alembic setup and initial schema migration`
+
+**Test summary:** 26 passed (2 new migration tests: `test_migrations_apply_and_match_models` and `test_migration_check_is_clean`)
+
+**Concerns:** None. The per-file E501 ignore was not needed — `ruff format` wrapped all long lines in the generated migration cleanly.
+
+**Report file:** `/home/briney/git/fold-at-scripps/.superpowers/sdd/task-7-report.md`</result>
+<usage><subagent_tokens>47473</subagent_tokens><tool_uses>35</tool_uses><duration_ms>141344</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a57920b346cb10052</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a57920b346cb10052.output</output-file>
+<status>completed</status>
+<summary>Agent "Review P2 Task 7 (spec + quality)" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>### Spec Compliance
+
+- ✅ `pyproject.toml` — `alembic&gt;=1.13` added; alphabetical ordering correct (after `asyncpg`); `uv.lock` updated with alembic 1.18.5, mako, markupsafe.
+- ✅ `alembic.ini` — present; `script_location = migrations`; matches spec exactly including logging sections.
+- ✅ `migrations/env.py` — present; async-aware with `async_engine_from_config` + `connection.run_sync(do_run_migrations)`; `target_metadata = Base.metadata`; URL set from `get_settings().database_url`; offline and online paths both present.
+- ✅ `migrations/script.py.mako` — present; matches spec template including `from __future__ import annotations` and `from collections.abc import Sequence`.
+- ✅ `migrations/versions/4ae9f1f0e12e_initial_schema.py` — autogenerated initial revision present.
+- ✅ All eight tables confirmed in the migration: `system_settings`, `tools`, `users`, `allowed_emails`, `audit_logs`, `password_reset_tokens`, `runs`, `artifacts`.
+- ✅ `tests/test_migrations.py` — matches spec exactly: `test_migrations_apply_and_match_models` (upgrade → check → downgrade in finally) and `test_migration_check_is_clean` (upgrade → check with explicit fail path → downgrade in else); `pytestmark = pytest.mark.integration`.
+- ✅ `README.md` — "Database migrations" subsection appended with correct content.
+- ✅ `alembic check` no-drift verified (test suite 26 passed per report; `command.check` exercised by both test functions).
+
+### Strengths
+
+- The async env pattern is textbook-correct: `async_engine_from_config` with `NullPool` for migration workloads, `run_sync(do_run_migrations)` to bridge into SQLAlchemy's sync context API, `await connectable.dispose()` after use — all exactly as recommended by Alembic's own async docs.
+- `test_migrations_apply_and_match_models` wraps `command.downgrade` in `finally`, ensuring teardown even when `command.check` raises `AutogenerateDiffsDetected`. The complementary `test_migration_check_is_clean` provides an explicit failure message path. Both tests upgrade before checking, so drift detection runs against actual DB state — the check is not vacuous.
+- Constraint naming is complete and consistent throughout: `pk_*`, `uq_*`, `fk_*`, `ck_*`, `ix_*` prefixes across all eight tables, using `op.f(...)` to route through the naming convention (diff lines 232–233, 256–259, 290–292, 305–313, 329–335, 352–359, 403–405, 425–428). The composite unique on `(name, version)` is named `uq_tools_name` (line 257) — slightly abbreviated vs. `uq_tools_name_version` in the brief's example, but naming conventions only required the prefix, and `alembic check` passing confirms the model agrees.
+- `server_default` is present on all expected columns: `maintenance_mode` (line 224–225), `enabled` on tools (line 245), `gpu_count` on tools uses bare `"1"` string (line 240; acceptable — Postgres coerces it); `created_at`/`updated_at` use `sa.text("now()")` throughout.
+- No redundant `ix_users_email` or `ix_allowed_emails_email` indexes — those are handled entirely by the `UniqueConstraint` entries (lines 291, 312), which is correct.
+- The compound index `ix_runs_user_id_hidden_at` (line 410) is named without `op.f()` — this is intentional: it is a manually named composite index, not a single-column index covered by the naming convention, and `downgrade` drops it by the same literal name (line 438). Consistent.
+- `script.py.mako` uses `from collections.abc import Sequence` (not `typing.Sequence`) — correct for Python 3.11+.
+- Import ordering in the generated migration (lines 208–210) has `sqlalchemy` before `alembic` — ruff fixed this per the report (I001), and the diff shows the corrected order (`import sqlalchemy as sa` then `from alembic import op`). Passes ruff cleanly.
+
+### Issues
+
+#### Critical (Must Fix)
+
+None.
+
+#### Important (Should Fix)
+
+None.
+
+#### Minor (Nice to Have)
+
+- `migrations/env.py:128` — `do_run_migrations` receives `connection: Connection` typed as `sqlalchemy.engine.Connection` (sync). For an async context calling `run_sync`, the actual object passed by SQLAlchemy is an `AsyncConnection`-wrapped sync proxy, which is technically the correct sync `Connection` type at the `run_sync` boundary. The import and type annotation are correct per Alembic's own async recipe. No change needed — flagging only for awareness.
+- `migrations/versions/4ae9f1f0e12e_initial_schema.py:240` — `gpu_count` uses `server_default="1"` (bare string) while other boolean defaults use `sa.text("false")`/`sa.text("true")`. For an integer default, a bare string is valid in PostgreSQL and passes `alembic check`, but for stylistic consistency with the rest of the migration `sa.text("1")` would be more uniform. Not a correctness issue.
+
+### Assessment
+
+**Task quality:** Approved
+
+**Reasoning:** All eight required deliverables are present and correct, the migration covers all eight tables with proper constraint names, the async env follows Alembic's recommended pattern exactly, and both test functions exercise the full upgrade/check/downgrade cycle in ways that would genuinely catch drift or round-trip failures.</result>
+<usage><subagent_tokens>46294</subagent_tokens><tool_uses>3</tool_uses><duration_ms>41392</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a75e2b1908aa78808</task-id>
+<tool-use-id>toolu_01EpJUYAA7tjCWwkpVv8MXpX</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a75e2b1908aa78808.output</output-file>
+<status>completed</status>
+<summary>Agent "Implement P2 Task 8: carry-forward fixes" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>---
+
+**Status:** DONE
+
+**Commits:** `303468d feat: dispose engine on shutdown; auto-skip integration tests without DB`
+
+**Test summary:** 27 passed with Postgres UP (nothing skipped); 8 passed + 19 integration tests SKIPPED with Postgres DOWN — unit tests ran unimpeded.
+
+**Concerns:** One deliberate deviation from the brief: the DB-reachability probe catches `(SQLAlchemyError, OSError)` instead of `SQLAlchemyError` alone. When Postgres is stopped, `asyncpg` raises `ConnectionRefusedError` (an `OSError` subclass) which SQLAlchemy does not wrap, causing a pytest `INTERNALERROR` with the brief's exact code. Both exception types are specific and appropriate; the brief's intent ("not bare `Exception`") is fully preserved.
+
+**Report:** `/home/briney/git/fold-at-scripps/.superpowers/sdd/task-8-report.md`</result>
+<usage><subagent_tokens>40219</subagent_tokens><tool_uses>30</tool_uses><duration_ms>154393</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>ad5a9cd926cea3c48</task-id>
+<tool-use-id>toolu_01CBL7y4pJ7haWxHxy2dp1wH</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/ad5a9cd926cea3c48.output</output-file>
+<status>completed</status>
+<summary>Agent "Review P2 Task 8 (spec + quality)" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>### Spec Compliance
+
+- ✅ `dispose_engine()` added to `src/fold_at_scripps/db.py` — async, idempotent, clears both `_engine` and `_sessionmaker` (`db.py` lines 31–38)
+- ✅ `lifespan` added to `src/fold_at_scripps/main.py` — `@asynccontextmanager`, yields, calls `await dispose_engine()` on shutdown (`main.py` lines 57–61)
+- ✅ `lifespan` wired to `FastAPI()` via `lifespan=lifespan` in `create_app()` (`main.py` line 68)
+- ✅ `tests/conftest.py` — `_database_reachable()` probe and `pytest_collection_modifyitems` hook added
+- ✅ `tests/test_lifespan.py` created — matches brief verbatim (both idempotency assertions present)
+- ✅ `from __future__ import annotations` present in all four changed/created files
+- ✅ Type hints present throughout; Google-style docstrings on all public functions
+- ✅ Absolute imports only; no wildcard imports
+- ✅ Known deviation (`(SQLAlchemyError, OSError)` vs. `SQLAlchemyError` only): correct and justified — `asyncpg` surfaces `ConnectionRefusedError` (an `OSError` subclass) before SQLAlchemy wraps it; both caught types are specific, not bare `Exception`; the brief's rule "catch specific exceptions" is satisfied
+- ⚠️ The skip reason string was slightly changed from the brief's wording (`"to include integration tests"` → `"to enable integration tests"`) — functionally immaterial, purely cosmetic
+
+---
+
+### Strengths
+
+- `dispose_engine()` is exactly right: guards on `_engine is not None`, disposes, then nulls both singletons in one atomic block — no window where `_sessionmaker` still holds a reference to a disposed engine.
+- The `lifespan` is minimal and correct: nothing happens at startup (no startup-failure risk), engine is cleaned up unconditionally on shutdown.
+- The probe's `finally: await engine.dispose()` ensures the temporary engine is never leaked, even if the exception handler itself were to raise.
+- The `pytest_collection_modifyitems` hook calls `_database_reachable()` exactly once per collection run — no per-item probing.
+- The `_reason` variable extraction to satisfy the 100-char line limit is clean; the string itself is clear and actionable.
+- `test_dispose_engine_is_idempotent` covers both the no-engine-yet path and the dispose-then-clear path, precisely matching the brief's test skeleton.
+- All four files pass ruff format + check with no warnings.
+
+---
+
+### Issues
+
+#### Critical (Must Fix)
+
+None.
+
+#### Important (Should Fix)
+
+None.
+
+#### Minor (Nice to Have)
+
+**`tests/test_lifespan.py` — missing `@pytest.mark.asyncio` (or equivalent)**
+`test_dispose_engine_is_idempotent` is defined as a bare `async def` with no marker and no `pytest-asyncio` mode annotation visible in the diff. If `asyncio_mode = "auto"` is set project-wide in `pyproject.toml` or `pytest.ini`, this is fine; if not, pytest will collect it but never actually await it (it becomes a coroutine that gets garbage-collected). The report shows 27 passed with Postgres up, which strongly implies auto-mode is configured — but this is unverifiable from the diff alone. If it isn't, the test silently passes vacuously. ⚠️ Verify `asyncio_mode = "auto"` (or `"strict"` with a marker) is in `pyproject.toml`'s `[tool.pytest.ini_options]` before shipping.
+
+---
+
+### Assessment
+
+**Task quality:** Approved
+
+**Reasoning:** All brief requirements are fully implemented and structurally correct; the one deviation (`OSError` added to the probe's except clause) is both technically necessary and rule-compliant, and the both-ways test evidence confirms it works. The only open question — whether `asyncio_mode = "auto"` is set globally — is unverifiable from this diff but is likely already in place given the test suite passed.</result>
+<usage><subagent_tokens>26344</subagent_tokens><tool_uses>3</tool_uses><duration_ms>29230</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>ac5a3d73e9842fb84</task-id>
+<tool-use-id>toolu_01PW5DhuKWUEy86kWtkMVmg8</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/ac5a3d73e9842fb84.output</output-file>
+<status>completed</status>
+<summary>Agent "Final whole-branch review (data model)" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>No parallel runner, sequential execution, marker registered. I have a complete and verified picture. Let me compile the review.
+
+## Review: Plan 2 (Data Model &amp; Migrations) — `feature/data-model` (668431f..303468d)
+
+### Strengths
+
+- **Clean plan correction.** The `cc11d38` mid-execution fix (defer relationships until both endpoint models exist) is technically correct: SQLAlchemy resolves `relationship()` targets at mapper-configuration time, and `User.runs -&gt; Run` before `Run` is mapped raises `InvalidRequestError`. The corrected sequencing (User/Tool relationship-free in Tasks 2/3; `Run` + `User.runs`/`Tool.runs` wired in Task 4; `Run.artifacts` + `Artifact.run` in Task 5) is the standard idiom and matches the final committed files exactly.
+- **Constraint-naming convention** (`base.py:8-14` of the diff / `NAMING_CONVENTION`) is correctly applied and flows through to the migration: `pk_users`, `uq_users_email`, `fk_runs_user_id_users`, `ck_system_settings_single_row`, etc. This is exactly what makes future Alembic autogenerate stable.
+- **`str_enum` helper** (`base.py`) is the right call: `native_enum=False` + `values_callable` stores enum *values* (`"admin"`, not `"ADMIN"`), `length` auto-sized. Confirmed round-tripping by `test_user_role_round_trips_as_value`. This makes enum evolution a data migration, not a Postgres `ALTER TYPE` dance.
+- **Migration covers all eight tables** (`migrations/versions/4ae9f1f0e12e_initial_schema.py`): `system_settings`, `tools`, `users`, `allowed_emails`, `audit_logs`, `password_reset_tokens`, `runs`, `artifacts`, with `downgrade()` dropping them in reverse FK order. Autogenerated and guarded by the no-drift test.
+- **Real-DB tests, not mocked.** `db_session` (`tests/models/conftest.py`) builds a fresh schema per test against actual Postgres; cascade tests (`test_artifact_cascade_delete_with_run`, `test_password_reset_token_cascades_with_user`) exercise real DELETEs and assert row counts. The `01cc70c` honesty fix (`refresh(artifact, attribute_names=["run"])` in `test_artifact.py`) genuinely forces a relationship load instead of reading an identity-map cache hit — good catch by per-task review.
+- **No-drift test is real** (`tests/test_migrations.py`): `command.upgrade(head)` then `command.check()` against the migrated DB; `AutogenerateDiffsDetected` fails the test. This catches model/migration divergence in CI.
+- **Carry-forwards are correct.** `dispose_engine()` (`db.py`) is idempotent and clears both singletons; `lifespan` (`main.py`) disposes on shutdown; the auto-skip hook (`tests/conftest.py`) works both directions. Marker is registered in `pyproject.toml`, `asyncio_mode = "auto"`, sequential runner (no xdist) — so the shared-DB tests don't collide.
+
+### Minor-findings triage
+
+- **[P2T1] UUIDPKMixin MRO docstring note** — defer-to-nice-to-have. Usage is correct everywhere (`class User(UUIDPKMixin, TimestampMixin, Base)`); purely a doc nicety.
+- **[P2T1] `str_enum` lambda param `cls` shadows `enum_cls`** — defer (cosmetic). The lambda receives SQLAlchemy's enum class at call time; functionally correct, only a readability nit.
+- **[P2T1] `enums.py` no `__all__`** — defer (cosmetic). Public API is the re-export layer in `models/__init__.py`, which has `__all__`.
+- **[P2T3] Python-side `default=` vs `server_default`** — resolved already by `8ebd468`, which added `server_default` to `gpu_count`/`enabled`/`maintenance_mode`. Remaining Python-only defaults are the enum columns (`role`/`tier`/`status`/`status`) — see Important #1 below.
+- **[P2T3] `test_tool` count==2 relies on fresh-schema isolation** — defer. Guaranteed by `db_session` drop/create; acceptable.
+- **[P2T4] `__init__.py` alphabetical import order** — defer/no-action. Correct call; SQLAlchemy defers resolution, and dependency-ordering would fight isort.
+- **[P2T5 → PLAN 5 decision] relationship loading strategy** — **defer-to-Plan-5, sound** (expanded below).
+- **[P2T7] `gpu_count` `server_default="1"` bare-string vs `sa.text("1")`** — defer (stylistic; both valid DDL).
+- **[P2T8] probe catches `(SQLAlchemyError, OSError)`** — defer/no-action. Justified: asyncpg surfaces `ConnectionRefusedError` (an `OSError`) unwrapped; rule-compliant (specific, not bare).
+- **[P2T8] skip-reason wording differs from brief** — defer (immaterial).
+
+**On the Plan-5 deferral specifically:** Deferring is sound, and nothing must change in the models now. With default `lazy="select"`, touching an unloaded relationship on a cold (e.g. just-`refresh`ed without the attribute, or detached) object in async raises `MissingGreenlet` — but that is a *query-site* concern, correctly owned by the service layer. The ledger's loader guidance is also correct and worth preserving for Plan 5: use `selectinload` for the to-many collections (`User.runs`, `Tool.runs`, `Run.artifacts`) and `joinedload`/`selectinload` for the many-to-one scalars (`Run.user`, `Run.tool`, `Artifact.run`) — note the ledger's phrasing ("selectin is WRONG for the one-to-many collections") is backwards; `selectinload` is in fact the *preferred* strategy for collections. I'd flag that wording so Plan 5 doesn't act on it inverted. The one thing I'd *recommend* (not require) for Plan 5: add `lazy="raise_on_sql"` as a guardrail so a forgotten eager-load fails loudly at dev time instead of emitting an implicit lazy load. Not a model change needed now.
+
+### Issues
+
+#### Critical (Must Fix)
+None.
+
+#### Important (Should Fix)
+1. **Enum columns have no `server_default`; non-enum defaulted columns do** — `user.py` (`role`/`tier`/`status`), `run.py` (`status`). `8ebd468` added `server_default` to `gpu_count`, `enabled`, `maintenance_mode`, but the enum-backed columns still rely on Python-side `default=` only. This is an inconsistency that bites the moment a row is inserted outside the ORM (raw SQL seed, a future bulk `INSERT`, or a data migration): `users.role`/`tier`/`status` and `runs.status` are `NOT NULL` with no DB default and would reject the insert, whereas `gpu_count`/`enabled` would not. Either add `server_default=&lt;value&gt;` to all four enum columns (e.g. `server_default="user"`, `"standard"`, `"pending"`, `"queued"`) for consistency, or consciously decide enum defaults are ORM-only and document it. Given `8ebd468`'s stated intent ("add server_default to defaulted columns"), the enum columns appear to have been missed. *Note: this is a model+migration change; doing it now keeps the migration regeneration in this plan rather than spawning a churn migration in Plan 3.*
+
+#### Minor (Nice to Have)
+1. **Composite `UniqueConstraint("name", "version")` names as `uq_tools_name`** (migration line `uq_tools_name`). The convention uses `%(column_0_name)s`, so the constraint name references only the first column. It's unique within the table and works, but a reader scanning constraints sees `uq_tools_name` for what is really a `(name, version)` uniqueness — mildly misleading. Acceptable to leave (changing the convention to include both columns risks identifier-length issues elsewhere); worth a one-line comment if you care.
+2. **`ix_runs_user_id_hidden_at` is hand-named, bypassing the convention** (`run.py` `__table_args__`). The convention would have produced `ix_runs_user_id` for an `Index(None, ...)` — but since a *separate* `ix_runs_user_id` already exists (from `user_id`'s `index=True`), the explicit name is actually necessary to avoid collision. Correct as-is; flagging only because it's the one constraint not following the auto-convention, which a future reader might "fix" and break.
+3. **`runs.user_id` has both a single-column index (`ix_runs_user_id`) and is the lead column of the composite `ix_runs_user_id_hidden_at`.** The composite can serve `user_id`-only lookups, so `ix_runs_user_id` is arguably redundant. Negligible cost at this scale; revisit only if write volume on `runs` becomes high. No action now.
+
+### Recommendations
+- **Plan 5 (service layer):** adopt explicit eager loading at query sites (`selectinload` for collections, `joinedload`/`selectinload` for scalars). Correct the inverted note in the ledger before designing queries. Consider `lazy="raise_on_sql"` as a dev guardrail.
+- **Process:** the per-task `server_default` cleanup (`8ebd468`) is exactly the kind of cross-cutting hygiene pass that should sweep *all* defaulted columns in one go — the enum columns slipping through is why Important #1 exists. A quick "grep for `default=` without `server_default=`" check would have caught it.
+- **`audit_logs` growth:** as an append-only, time-series-ish table, it has `ix_audit_logs_created_at` already (good for time-window queries). When Plan 4+ adds admin filtering by `(actor_id, created_at)` or `(action, created_at)`, consider composite indexes then — no action now.
+
+### Assessment
+**Ready to merge?** With fixes.
+**Reasoning:** The data model, migration, and tests are well-structured, the relationship-deferral correction is sound, and all eight entities plus carry-forwards are present and genuinely exercised against real Postgres. The one substantive item is the missing `server_default` on the four enum columns (Important #1) — an inconsistency best resolved now while the initial migration is still being regenerated rather than via a churn migration later; everything else is defer-able cosmetic or correctly owned by Plan 5.</result>
+<usage><subagent_tokens>94362</subagent_tokens><tool_uses>8</tool_uses><duration_ms>88843</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>af160dff3293b67ad</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/af160dff3293b67ad.output</output-file>
+<status>completed</status>
+<summary>Agent "Fix enum server_default + regen migration" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>**Status:** DONE
+- Commit: `30a5b6a fix(models): add server_default to enum columns; regenerate initial migration`
+- New migration `8134eced0fe3_initial_schema.py`; alembic check clean ("No new upgrade operations detected."); 27 tests passed
+- Report appended to `/home/briney/git/fold-at-scripps/.superpowers/sdd/task-8-report.md`</result>
+<usage><subagent_tokens>39200</subagent_tokens><tool_uses>28</tool_uses><duration_ms>111108</duration_ms></usage>
+</task-notification>
+
+---
+
+option 2
+
+---
+
+PR merged and branch deleted. Go ahead with drafting Plan 3
