@@ -37,3 +37,12 @@ async def get_session() -> AsyncIterator[AsyncSession]:
     """FastAPI dependency yielding an async database session."""
     async with get_sessionmaker()() as session:
         yield session
+
+
+async def dispose_engine() -> None:
+    """Dispose the process-wide engine and clear the singletons, if one exists."""
+    global _engine, _sessionmaker
+    if _engine is not None:
+        await _engine.dispose()
+        _engine = None
+        _sessionmaker = None
