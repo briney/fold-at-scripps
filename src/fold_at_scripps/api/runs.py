@@ -7,6 +7,7 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fold_at_scripps.auth.dependencies import get_current_user
@@ -123,3 +124,26 @@ async def delete_user_run(
     run = await soft_delete_run(session, user, run_id)
     if run is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
+
+
+@router.get("/{run_id}/artifacts/{artifact_path:path}")
+async def download_artifact(
+    run_id: uuid.UUID,
+    artifact_path: str,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+    storage: Storage = Depends(get_storage),
+) -> FileResponse:
+    """Stream one of the run's output files (ownership-checked, traversal-guarded)."""
+    run = await get_run(session, user, run_id)
+    if run is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
+    artifact = next((a for a in run.artifacts if a.path == artifact_path), None)
+    if artifact is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Artifact not found")
+    outputs = storage.outputs_dir(run_id).resolve()
+    target = (outputs / artifact_path).resolve()
+    if not target.is_relative_to(outputs) or not target.is_file():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Artifact not found")
+    media_type = artifact.content_type or "application/octet-stream"
+    return FileResponse(target, filename=artifact.name, media_type=media_type)

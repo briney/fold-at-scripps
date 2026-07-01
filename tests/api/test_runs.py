@@ -14,7 +14,8 @@ from fold_at_scripps.catalog.service import sync_catalog
 from fold_at_scripps.catalog.sources import FakeToolSource, ToolRecord
 from fold_at_scripps.config import get_settings
 from fold_at_scripps.main import create_app
-from fold_at_scripps.models import AllowedEmail, Tool, User, UserStatus
+from fold_at_scripps.models import AllowedEmail, Artifact, Tool, User, UserStatus
+from fold_at_scripps.storage import get_storage
 
 pytestmark = pytest.mark.integration
 
@@ -204,3 +205,55 @@ async def test_delete_run_204_then_hidden(db_session: AsyncSession) -> None:
         assert (await client.get(f"/runs/{run['id']}")).status_code == 404
         missing = await client.delete(f"/runs/{uuid.uuid4()}")
         assert missing.status_code == 404
+
+
+async def _make_output(db_session: AsyncSession, run_id: uuid.UUID, rel: str, data: bytes) -> None:
+    """Write a real output file and index it as an Artifact (simulates a finished run)."""
+    storage = get_storage()
+    target = storage.outputs_dir(run_id) / rel
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(data)
+    db_session.add(
+        Artifact(
+            run_id=run_id,
+            name=target.name,
+            path=rel,
+            content_type="text/plain",
+            size_bytes=len(data),
+        )
+    )
+    await db_session.commit()
+
+
+async def test_download_artifact_streams_file(db_session: AsyncSession) -> None:
+    tool = await _seed_tool(db_session)
+    async with _client() as client:
+        await _login(client, db_session)
+        run = await _submit(client, tool.id)
+        run_id = uuid.UUID(run["id"])
+        await _make_output(db_session, run_id, "raw/result.txt", b"HELLO")
+        resp = await client.get(f"/runs/{run_id}/artifacts/raw/result.txt")
+        assert resp.status_code == 200
+        assert resp.content == b"HELLO"
+
+
+async def test_download_unknown_artifact_404(db_session: AsyncSession) -> None:
+    tool = await _seed_tool(db_session)
+    async with _client() as client:
+        await _login(client, db_session)
+        run = await _submit(client, tool.id)
+        resp = await client.get(f"/runs/{run['id']}/artifacts/nope.txt")
+        assert resp.status_code == 404
+
+
+async def test_download_requires_ownership(db_session: AsyncSession) -> None:
+    tool = await _seed_tool(db_session)
+    async with _client() as owner:
+        await _login(owner, db_session, email="owner@scripps.edu")
+        run = await _submit(owner, tool.id)
+        run_id = uuid.UUID(run["id"])
+        await _make_output(db_session, run_id, "raw/result.txt", b"SECRET")
+    async with _client() as other:
+        await _login(other, db_session, email="other@scripps.edu")
+        resp = await other.get(f"/runs/{run_id}/artifacts/raw/result.txt")
+        assert resp.status_code == 404
