@@ -13,8 +13,20 @@ from fold_at_scripps.api.auth import router as auth_router
 from fold_at_scripps.api.health import router as health_router
 from fold_at_scripps.api.runs import router as runs_router
 from fold_at_scripps.api.tools import router as tools_router
-from fold_at_scripps.config import get_settings
+from fold_at_scripps.config import Settings, get_settings
 from fold_at_scripps.db import dispose_engine
+from fold_at_scripps.logging_config import configure_logging
+
+_DEV_SECRET_KEY = "dev-insecure-secret-change-me"
+
+
+def _require_production_secret(settings: Settings) -> None:
+    """Refuse to boot with the insecure dev secret outside debug mode."""
+    if not settings.debug and settings.secret_key == _DEV_SECRET_KEY:
+        raise RuntimeError(
+            "FOLD_SECRET_KEY is the insecure development default. Set a real "
+            "FOLD_SECRET_KEY in production (or FOLD_DEBUG=true for local dev)."
+        )
 
 
 @asynccontextmanager
@@ -27,6 +39,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 def create_app() -> FastAPI:
     """Build and configure the FastAPI application."""
     settings = get_settings()
+    configure_logging(settings.log_level)
+    _require_production_secret(settings)
     app = FastAPI(title=settings.app_name, lifespan=lifespan)
     app.add_middleware(
         SessionMiddleware,

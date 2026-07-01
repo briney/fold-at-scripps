@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     storage_root: str = "./data"
     gpu_count: int = 8
     scheduler_poll_interval: float = 2.0
+    log_level: str = "INFO"
+    max_upload_bytes: int = 100 * 1024 * 1024  # 100 MB request-body cap
+    frontend_dist: str = "frontend/dist"
 
 
 @lru_cache

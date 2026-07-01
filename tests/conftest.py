@@ -2,6 +2,13 @@
 
 from __future__ import annotations
 
+import os
+
+# The Plan 10 secret-key guard refuses the dev-default secret when not in debug.
+# Provide a non-dev test secret at collection time so `create_app()` (run at
+# import of fold_at_scripps.main) does not raise during the test suite.
+os.environ.setdefault("FOLD_SECRET_KEY", "test-secret-not-for-production")
+
 import asyncio
 from collections.abc import AsyncIterator, Iterator
 
