@@ -131,7 +131,7 @@ def rollback(
 
 
 @db_app.command("dump")
-def db_dump() -> None:
+def db_dump(dry_run: bool = typer.Option(False, "--dry-run")) -> None:
     """Write a gzipped pg_dump snapshot to the backups directory."""
     from datetime import UTC, datetime
 
@@ -139,7 +139,7 @@ def db_dump() -> None:
 
     paths = context.resolve_paths()
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-    dest = postgres.dump(paths, paths.backups_dir / f"manual-{stamp}.sql.gz")
+    dest = postgres.dump(paths, paths.backups_dir / f"manual-{stamp}.sql.gz", dry_run=dry_run)
     console.print(f"[green]dumped[/] {dest}")
 
 
@@ -147,15 +147,17 @@ def db_dump() -> None:
 def db_restore(
     path: str = typer.Argument(..., help="Path to a .sql.gz snapshot."),
     yes: bool = typer.Option(False, "--yes"),
+    dry_run: bool = typer.Option(False, "--dry-run"),
 ) -> None:
     """Restore the database from a snapshot (destructive)."""
     from pathlib import Path
 
     from fold_at_scripps.foldapp import postgres
 
-    if not yes and not typer.confirm("This overwrites the current database. Continue?"):
+    msg = "This overwrites the current database. Continue?"
+    if not dry_run and not yes and not typer.confirm(msg):
         raise typer.Abort()
-    postgres.restore(context.resolve_paths(), Path(path))
+    postgres.restore(context.resolve_paths(), Path(path), dry_run=dry_run)
     console.print("[green]restored[/]")
 
 
