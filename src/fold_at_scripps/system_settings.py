@@ -31,3 +31,10 @@ async def get_system_settings(session: AsyncSession) -> SystemSettings:
         if settings is None:  # pragma: no cover - defensive; row must exist post-race
             raise
     return settings
+
+
+async def set_maintenance_mode(session: AsyncSession, enabled: bool) -> None:
+    """Toggle the maintenance flag on the singleton and commit (CLI operator action)."""
+    settings = await get_system_settings(session)
+    settings.maintenance_mode = enabled
+    await session.commit()
