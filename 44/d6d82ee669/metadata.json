@@ -1,0 +1,25 @@
+{
+  "cli_version": "0.7.8",
+  "checkpoint_version": "branch-v1",
+  "checkpoint_id": "44d6d82ee669",
+  "strategy": "manual-commit",
+  "branch": "feature/frontend-researcher-app",
+  "checkpoints_count": 20,
+  "files_touched": null,
+  "sessions": [
+    {
+      "metadata": "/44/d6d82ee669/0/metadata.json",
+      "transcript": "/44/d6d82ee669/0/full.jsonl",
+      "compact_transcript": "/44/d6d82ee669/0/transcript.jsonl",
+      "content_hash": "/44/d6d82ee669/0/content_hash.txt",
+      "prompt": "/44/d6d82ee669/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 52242,
+    "cache_creation_tokens": 2203692,
+    "cache_read_tokens": 383490146,
+    "output_tokens": 1101446,
+    "api_call_count": 779
+  }
+}
