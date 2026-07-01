@@ -14,9 +14,9 @@ import RunDetailPage from "@/pages/RunDetailPage";
 import RunsPage from "@/pages/RunsPage";
 import SubmitPage from "@/pages/SubmitPage";
 import AdminLayout from "@/pages/admin/AdminLayout";
+import UsersPage from "@/pages/admin/UsersPage";
 
-// Placeholder admin screens — replaced by Tasks 3–8.
-const UsersPage = (): JSX.Element => <h1>Users</h1>;
+// Placeholder admin screens — replaced by Tasks 4–8.
 const AllowlistPage = (): JSX.Element => <h1>Allowlist</h1>;
 const SettingsPage = (): JSX.Element => <h1>Settings</h1>;
 const AdminCatalogPage = (): JSX.Element => <h1>Catalog</h1>;
