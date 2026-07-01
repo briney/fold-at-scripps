@@ -9,7 +9,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -106,6 +106,10 @@ class RunNotCancelable(Exception):
     """Raised when a run cannot be canceled from its current state."""
 
 
+class RunNotFound(Exception):
+    """Raised when a run does not exist or is not visible to the user."""
+
+
 async def list_runs(session: AsyncSession, user: User) -> list[Run]:
     """Return the user's non-hidden runs, newest first, with tool eager-loaded."""
     stmt = (
@@ -128,11 +132,24 @@ async def get_run(session: AsyncSession, user: User, run_id: uuid.UUID) -> Run |
 
 
 async def cancel_run(session: AsyncSession, user: User, run_id: uuid.UUID) -> Run:
-    """Cancel a queued run. Raises RunNotCancelable if it is not queued (or not found)."""
+    """Cancel the user's queued run.
+
+    Raises:
+        RunNotFound: no such run for this user (unknown, not owned, or hidden).
+        RunNotCancelable: the run exists but is not QUEUED (e.g. already claimed).
+    """
     run = await get_run(session, user, run_id)
-    if run is None or run.status is not RunStatus.QUEUED:
+    if run is None:
+        raise RunNotFound(f"Run {run_id} not found")
+    # Atomic against the scheduler's claim: only cancel if still QUEUED.
+    result = await session.execute(
+        update(Run)
+        .where(Run.id == run_id, Run.status == RunStatus.QUEUED)
+        .values(status=RunStatus.CANCELED)
+    )
+    if result.rowcount == 0:
+        await session.rollback()
         raise RunNotCancelable("Only queued runs can be canceled")
-    run.status = RunStatus.CANCELED
     await session.commit()
     await session.refresh(run)
     return run
