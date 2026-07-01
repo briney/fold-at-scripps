@@ -15,10 +15,10 @@ import RunsPage from "@/pages/RunsPage";
 import SubmitPage from "@/pages/SubmitPage";
 import AdminLayout from "@/pages/admin/AdminLayout";
 import AllowlistPage from "@/pages/admin/AllowlistPage";
+import SettingsPage from "@/pages/admin/SettingsPage";
 import UsersPage from "@/pages/admin/UsersPage";
 
-// Placeholder admin screens — replaced by Tasks 5–8.
-const SettingsPage = (): JSX.Element => <h1>Settings</h1>;
+// Placeholder admin screens — replaced by Tasks 6–8.
 const AdminCatalogPage = (): JSX.Element => <h1>Catalog</h1>;
 const AdminRunsPage = (): JSX.Element => <h1>Runs</h1>;
 const AdminRunDetailPage = (): JSX.Element => <h1>Run Detail</h1>;
