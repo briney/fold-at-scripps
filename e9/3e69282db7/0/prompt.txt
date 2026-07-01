@@ -1,0 +1,71 @@
+subagent-driven
+
+---
+
+<task-notification>
+<task-id>ace0ef2038603e4c5</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/ace0ef2038603e4c5.output</output-file>
+<status>completed</status>
+<summary>Agent "Implement Task 1: scaffold + shell + CLI" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Good! The report is created. Now let me provide the final summary:
+
+---
+
+**Status: DONE**
+
+**Commits created:**
+- `3a90788` — feat(foldapp): package scaffold, shell helper, CLI entry
+
+**Test summary:**
+5/5 foldapp tests passing, 177/177 full suite passing, ruff clean (linting + formatting)
+
+**Report file:**
+`/home/briney/git/fold-at-scripps/.superpowers/sdd/task-1-report.md`</result>
+<usage><subagent_tokens>48816</subagent_tokens><tool_uses>40</tool_uses><duration_ms>181841</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>aabebe464743f513b</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/aabebe464743f513b.output</output-file>
+<status>completed</status>
+<summary>Agent "Review Task 1 (spec + quality)" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Confirmed: `select = ["E", "F", "I", "UP", "B"]` — no `S` (bandit) rules are selected, so the `# noqa: S603` on `shell.py:129` is dead/inert (ruff would never flag S603 in the first place, and even `RUF100` isn't selected to catch unused noqa). This is a minor cosmetic issue, harmless but misleading — it implies a check exists that doesn't.
+
+Now I have everything needed for the review.
+
+---
+
+## Spec Compliance: ✅
+
+All required interfaces from the brief are present with exact names/signatures: `shell.run(args, *, dry_run=False, check=True, capture=True, cwd=None, env=None) -&gt; CommandResult`, `CommandResult(args, returncode, stdout, stderr)`, `CommandError(RuntimeError)`, `cli.app` (typer.Typer), `cli.main()`. Console script is `foldapp = "fold_at_scripps.foldapp.cli:main"`; `fold-admin`/`fold-scheduler` script entries are removed as required. `rich` added as a direct runtime dependency. Package/test layout matches the brief exactly (`src/fold_at_scripps/foldapp/{__init__,shell,cli}.py`, `tests/foldapp/{__init__,test_shell,test_cli}.py`).
+
+## Strengths
+
+- Signatures, dataclass shape, and exception type match the brief verbatim — later tasks that depend on these exact names will not be broken.
+- `subprocess.run` is called with a list (`args`), never `shell=True` — satisfies the global constraint.
+- `CommandError` message correctly truncates to the last 2000 chars and prefers stderr over stdout, matching the test's expectation (`"boom" in str(exc.value)`).
+- Confirmed via `uv.lock` that `rich` was already a transitive dep of `typer`; promoting it to a direct dependency is exactly what the brief asked for and is harmless.
+- Confirmed `tests/test_cli.py` (pre-existing) imports `fold_at_scripps.cli.app` directly rather than through the console script, so removing the `fold-admin` entry point doesn't break it — consistent with the reported 177/177 pass.
+- Task scope correctly stops at `pyproject.toml`'s `[project.scripts]` block; per the multi-task plan (`docs/superpowers/plans/2026-07-01-foldapp-cli.md`), deleting `src/fold_at_scripps/cli.py`, `Makefile`, and old systemd units is explicitly deferred to a later task — this diff does not overreach or underreach.
+
+## Issues
+
+**Minor** — `src/fold_at_scripps/foldapp/shell.py:129` — `# noqa: S603` is inert. The project's ruff config (`pyproject.toml:46`, `select = ["E", "F", "I", "UP", "B"]`) does not select bandit's `S` rules, so this rule would never fire and the noqa suppresses nothing. It's harmless but slightly misleading — a reader might think a security-lint gate is being suppressed here on purpose. Either drop the noqa or replace it with a plain comment (e.g., `# args is a list, never shell=True`).
+
+**Minor** — `src/fold_at_scripps/foldapp/cli.py:72-74` — the implementer added an `@app.callback(invoke_without_command=True)` with an empty docstring-only body that wasn't in the brief's snippet. This is a reasonable, low-risk deviation (Typer needs a callback for bare `--help` to behave well once subcommands exist later), and the report discloses it under "Design Notes." Flagging only because the brief's exact code wasn't followed verbatim — worth a human glance since later tasks will add real subcommands under this app and should confirm the callback doesn't need real logic (e.g., a global `--dry-run`/`--yes` flag per the plan's global constraints) when those commands land.
+
+**Minor** — `src/fold_at_scripps/foldapp/cli.py:69` — help text changed from the brief's `"fold@Scripps operator CLI (install, deploy, operate, upgrade)."` to `"foldapp: fold@Scripps operator CLI (install, deploy, operate, upgrade)."`, purely to satisfy the test assertion `"foldapp" in result.output.lower()`. This is disclosed in the report ("Modified help text... to satisfy the test assertion") and is benign, but it's worth noting the test was arguably under-specified in the brief (relying on Typer's own program-name behavior) rather than the implementation being wrong — no action needed, just calibration for future brief-writing.
+
+**Minor** — `src/fold_at_scripps/foldapp/shell.py:104-133` — no test exercises `capture=False` or the `cwd`/`env` parameters, and none is required by the brief's test list, so this isn't a spec gap — but since later tasks (`context.py`, `install.py`, etc., per the plan) will rely on `cwd`/`env` for real subprocess orchestration (git, docker, systemctl), a human should be aware this path is untested and only mechanically reviewed here.
+
+No Critical or Important findings. The `dry_run` short-circuit correctly returns before touching `cwd`/`env`/`capture`, and `check=False` correctly bypasses the raise while still returning the real returncode — both verified directly against the diff and consistent with the passing tests in the report.
+
+Task quality: Approved. The implementation matches the brief's required interfaces exactly (critical since later tasks depend on these exact names), stays within its scoped task boundary per the larger plan, and the only findings are minor cosmetic/disclosure items (an inert noqa, two small documented deviations from the brief's literal code) that don't affect correctness or downstream tasks.</result>
+<usage><subagent_tokens>43450</subagent_tokens><tool_uses>10</tool_uses><duration_ms>75856</duration_ms></usage>
+</task-notification>

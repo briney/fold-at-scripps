@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.7.8",
+  "checkpoint_version": "branch-v1",
+  "checkpoint_id": "e93e69282db7",
+  "strategy": "manual-commit",
+  "branch": "feature/foldapp-cli",
+  "checkpoints_count": 4,
+  "files_touched": [
+    "tests/foldapp/test_context.py"
+  ],
+  "sessions": [
+    {
+      "metadata": "/e9/3e69282db7/0/metadata.json",
+      "transcript": "/e9/3e69282db7/0/full.jsonl",
+      "compact_transcript": "/e9/3e69282db7/0/transcript.jsonl",
+      "content_hash": "/e9/3e69282db7/0/content_hash.txt",
+      "prompt": "/e9/3e69282db7/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 166,
+    "cache_creation_tokens": 260083,
+    "cache_read_tokens": 4037245,
+    "output_tokens": 25556,
+    "api_call_count": 19
+  }
+}
