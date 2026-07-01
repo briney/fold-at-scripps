@@ -68,7 +68,7 @@ class AutobioExecutor:
         autobio_outputs = workspace / "outputs"
         if autobio_outputs.is_dir():
             for item in autobio_outputs.iterdir():
-                shutil.move(str(item), str(request.outputs_dir / item.name))
+                shutil.move(item, request.outputs_dir / item.name)
         return ExecutionResult(
             succeeded=True, wall_time_seconds=wall, gpu_seconds=gpu_seconds, error=None
         )

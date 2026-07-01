@@ -37,7 +37,7 @@ def _request(root: Path, gpu_ids: list[int]) -> ExecutionRequest:
 def test_failure_from_nonzero_exit(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     request = _request(tmp_path, [0])
 
-    def _fake_run(cmd, **kwargs):
+    def _fake_run(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
         return subprocess.CompletedProcess(cmd, returncode=1, stdout="", stderr="boom")
 
     monkeypatch.setattr(subprocess, "run", _fake_run)
@@ -50,7 +50,7 @@ def test_failure_from_nonzero_exit(tmp_path: Path, monkeypatch: pytest.MonkeyPat
 def test_success_moves_outputs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     request = _request(tmp_path, [])
 
-    def _fake_run(cmd, **kwargs):
+    def _fake_run(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
         # emulate autobio writing a workspace with outputs/
         workspace = Path(cmd[cmd.index("--output-dir") + 1])
         (workspace / "outputs" / "raw").mkdir(parents=True)
@@ -62,6 +62,19 @@ def test_success_moves_outputs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     assert result.succeeded is True
     assert (request.outputs_dir / "raw" / "emb.npy").read_text() == "data"
     assert result.gpu_seconds is None  # no gpus
+
+
+def test_timeout_returns_failure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    request = _request(tmp_path, [0])
+
+    def _fake_run(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        raise subprocess.TimeoutExpired(cmd, timeout=1)
+
+    monkeypatch.setattr(subprocess, "run", _fake_run)
+    result = AutobioExecutor().execute(request)
+    assert result.succeeded is False
+    assert "timed out" in (result.error or "").lower()
+    assert result.gpu_seconds is not None  # wall x 1 gpu
 
 
 @pytest.mark.skipif(shutil.which("autobio") is None, reason="autobio CLI not on PATH")
