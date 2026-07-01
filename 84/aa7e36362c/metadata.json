@@ -1,0 +1,29 @@
+{
+  "cli_version": "0.7.8",
+  "checkpoint_version": "branch-v1",
+  "checkpoint_id": "84aa7e36362c",
+  "strategy": "manual-commit",
+  "branch": "feature/foldapp-cli",
+  "checkpoints_count": 26,
+  "files_touched": [
+    "Makefile",
+    "deploy/fold-api.service",
+    "deploy/fold-scheduler.service"
+  ],
+  "sessions": [
+    {
+      "metadata": "/84/aa7e36362c/0/metadata.json",
+      "transcript": "/84/aa7e36362c/0/full.jsonl",
+      "compact_transcript": "/84/aa7e36362c/0/transcript.jsonl",
+      "content_hash": "/84/aa7e36362c/0/content_hash.txt",
+      "prompt": "/84/aa7e36362c/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 17960,
+    "cache_creation_tokens": 628244,
+    "cache_read_tokens": 45417835,
+    "output_tokens": 233649,
+    "api_call_count": 187
+  }
+}

@@ -1,0 +1,1177 @@
+subagent-driven
+
+---
+
+<task-notification>
+<task-id>ace0ef2038603e4c5</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/ace0ef2038603e4c5.output</output-file>
+<status>completed</status>
+<summary>Agent "Implement Task 1: scaffold + shell + CLI" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Good! The report is created. Now let me provide the final summary:
+
+---
+
+**Status: DONE**
+
+**Commits created:**
+- `3a90788` — feat(foldapp): package scaffold, shell helper, CLI entry
+
+**Test summary:**
+5/5 foldapp tests passing, 177/177 full suite passing, ruff clean (linting + formatting)
+
+**Report file:**
+`/home/briney/git/fold-at-scripps/.superpowers/sdd/task-1-report.md`</result>
+<usage><subagent_tokens>48816</subagent_tokens><tool_uses>40</tool_uses><duration_ms>181841</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>aabebe464743f513b</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/aabebe464743f513b.output</output-file>
+<status>completed</status>
+<summary>Agent "Review Task 1 (spec + quality)" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Confirmed: `select = ["E", "F", "I", "UP", "B"]` — no `S` (bandit) rules are selected, so the `# noqa: S603` on `shell.py:129` is dead/inert (ruff would never flag S603 in the first place, and even `RUF100` isn't selected to catch unused noqa). This is a minor cosmetic issue, harmless but misleading — it implies a check exists that doesn't.
+
+Now I have everything needed for the review.
+
+---
+
+## Spec Compliance: ✅
+
+All required interfaces from the brief are present with exact names/signatures: `shell.run(args, *, dry_run=False, check=True, capture=True, cwd=None, env=None) -&gt; CommandResult`, `CommandResult(args, returncode, stdout, stderr)`, `CommandError(RuntimeError)`, `cli.app` (typer.Typer), `cli.main()`. Console script is `foldapp = "fold_at_scripps.foldapp.cli:main"`; `fold-admin`/`fold-scheduler` script entries are removed as required. `rich` added as a direct runtime dependency. Package/test layout matches the brief exactly (`src/fold_at_scripps/foldapp/{__init__,shell,cli}.py`, `tests/foldapp/{__init__,test_shell,test_cli}.py`).
+
+## Strengths
+
+- Signatures, dataclass shape, and exception type match the brief verbatim — later tasks that depend on these exact names will not be broken.
+- `subprocess.run` is called with a list (`args`), never `shell=True` — satisfies the global constraint.
+- `CommandError` message correctly truncates to the last 2000 chars and prefers stderr over stdout, matching the test's expectation (`"boom" in str(exc.value)`).
+- Confirmed via `uv.lock` that `rich` was already a transitive dep of `typer`; promoting it to a direct dependency is exactly what the brief asked for and is harmless.
+- Confirmed `tests/test_cli.py` (pre-existing) imports `fold_at_scripps.cli.app` directly rather than through the console script, so removing the `fold-admin` entry point doesn't break it — consistent with the reported 177/177 pass.
+- Task scope correctly stops at `pyproject.toml`'s `[project.scripts]` block; per the multi-task plan (`docs/superpowers/plans/2026-07-01-foldapp-cli.md`), deleting `src/fold_at_scripps/cli.py`, `Makefile`, and old systemd units is explicitly deferred to a later task — this diff does not overreach or underreach.
+
+## Issues
+
+**Minor** — `src/fold_at_scripps/foldapp/shell.py:129` — `# noqa: S603` is inert. The project's ruff config (`pyproject.toml:46`, `select = ["E", "F", "I", "UP", "B"]`) does not select bandit's `S` rules, so this rule would never fire and the noqa suppresses nothing. It's harmless but slightly misleading — a reader might think a security-lint gate is being suppressed here on purpose. Either drop the noqa or replace it with a plain comment (e.g., `# args is a list, never shell=True`).
+
+**Minor** — `src/fold_at_scripps/foldapp/cli.py:72-74` — the implementer added an `@app.callback(invoke_without_command=True)` with an empty docstring-only body that wasn't in the brief's snippet. This is a reasonable, low-risk deviation (Typer needs a callback for bare `--help` to behave well once subcommands exist later), and the report discloses it under "Design Notes." Flagging only because the brief's exact code wasn't followed verbatim — worth a human glance since later tasks will add real subcommands under this app and should confirm the callback doesn't need real logic (e.g., a global `--dry-run`/`--yes` flag per the plan's global constraints) when those commands land.
+
+**Minor** — `src/fold_at_scripps/foldapp/cli.py:69` — help text changed from the brief's `"fold@Scripps operator CLI (install, deploy, operate, upgrade)."` to `"foldapp: fold@Scripps operator CLI (install, deploy, operate, upgrade)."`, purely to satisfy the test assertion `"foldapp" in result.output.lower()`. This is disclosed in the report ("Modified help text... to satisfy the test assertion") and is benign, but it's worth noting the test was arguably under-specified in the brief (relying on Typer's own program-name behavior) rather than the implementation being wrong — no action needed, just calibration for future brief-writing.
+
+**Minor** — `src/fold_at_scripps/foldapp/shell.py:104-133` — no test exercises `capture=False` or the `cwd`/`env` parameters, and none is required by the brief's test list, so this isn't a spec gap — but since later tasks (`context.py`, `install.py`, etc., per the plan) will rely on `cwd`/`env` for real subprocess orchestration (git, docker, systemctl), a human should be aware this path is untested and only mechanically reviewed here.
+
+No Critical or Important findings. The `dry_run` short-circuit correctly returns before touching `cwd`/`env`/`capture`, and `check=False` correctly bypasses the raise while still returning the real returncode — both verified directly against the diff and consistent with the passing tests in the report.
+
+Task quality: Approved. The implementation matches the brief's required interfaces exactly (critical since later tasks depend on these exact names), stays within its scoped task boundary per the larger plan, and the only findings are minor cosmetic/disclosure items (an inert noqa, two small documented deviations from the brief's literal code) that don't affect correctness or downstream tasks.</result>
+<usage><subagent_tokens>43450</subagent_tokens><tool_uses>10</tool_uses><duration_ms>75856</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>abed2e7cdbf2639ac</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/abed2e7cdbf2639ac.output</output-file>
+<status>completed</status>
+<summary>Agent "Implement Task 2: context.py" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Perfect! All steps complete. Let me provide the final summary:
+
+---
+
+## Status: DONE
+
+**Commit created:**
+- `e49a073` — `feat(foldapp): path/layout resolution (FoldappPaths)`
+
+**Test summary:**
+- 3 new tests in `tests/foldapp/test_context.py`: all pass
+- Full suite: 180 passed (including task 2 tests)
+- Ruff: all checks passed, formatting clean
+
+**Concerns:**
+None. Implementation matches brief exactly, all tests passing, full suite clean.
+
+**Report file:**
+`/home/briney/git/fold-at-scripps/.superpowers/sdd/task-2-report.md`</result>
+<usage><subagent_tokens>34123</subagent_tokens><tool_uses>15</tool_uses><duration_ms>102706</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a938b78040bd07106</task-id>
+<tool-use-id>toolu_01MKCt4sDLJzzqz1bJdTA7TB</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a938b78040bd07106.output</output-file>
+<status>completed</status>
+<summary>Agent "Review Task 2 (spec + quality)" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>No callers yet reference `resolve_paths` or `context` — consistent with this being a foundational task that later tasks (CLI wiring) will consume. Nothing more to verify outside the diff.
+
+---
+
+## Spec-Compliance Verdict: ✅
+
+All required names, fields, properties, defaults, and env overrides match the brief exactly: `FoldappPaths` frozen dataclass with the 8 specified fields plus `api_unit`/`scheduler_unit` properties producing `fold-api.service`/`fold-scheduler.service`; `resolve_paths(*, app_dir=None, home=None, env=None, user=None)`; `FOLDAPP_APP_DIR` and `FOLDAPP_STATE_DIR` env overrides honored; default layout (env_file, state_dir, data_dir, backups_dir, deploy_state_file, user_unit_dir) matches the brief precisely.
+
+## Strengths
+
+- Exact match to the brief's field names, property names, unit filenames, and default paths — critical since later tasks depend on these exact names.
+- Frozen dataclass gives immutability for what is effectively a config/value object.
+- `env: Mapping[str, str] | None` keyword override cleanly decouples tests from real `os.environ`/`Path.home()`/CWD, avoiding monkeypatching.
+- Google-style docstrings present on the module, class, properties, and functions; `from __future__ import annotations` used; line lengths within 100; ruff clean per report (plausible — code is simple and idiomatic).
+- Tests directly assert against the brief's exact example test file (verbatim), which is appropriate for a spec-fidelity task like this.
+
+## Issues
+
+**1. `_find_app_dir` upward search has no test coverage (Minor, plan-mandated gap).**
+`src/fold_at_scripps/foldapp/context.py:92-101`. The brief's own Step-1 test file (which the implementer copied verbatim) never exercises the "no `app_dir` override" branch — all three tests pass `app_dir=` explicitly. This means the only nontrivial logic in the module (the upward directory walk and its fallback-to-`here` behavior) is completely untested. This mirrors the brief exactly, so it's plan-mandated rather than an implementer shortfall — but it's still a real gap: a future refactor of `_find_app_dir` could break silently. Fix (optional, exceeds brief): add a test that chdirs into a nested tmp_path structure with a `pyproject.toml` a few levels up and asserts `resolve_paths(home=..., env={})` (no `app_dir`) finds it, plus a case with no `pyproject.toml` anywhere confirming fallback to `here`.
+
+**2. `_find_app_dir` walks all the way to filesystem root with no bound, and silently falls back to CWD if nothing is found (Minor).**
+`src/fold_at_scripps/foldapp/context.py:97-101`. If invoked from a directory with no `pyproject.toml` in any ancestor (e.g., `/tmp`, a systemd service's default CWD of `/`), the loop scans every ancestor up to `/` and then falls back to returning `here` (CWD) — not an error. Given this is meant to locate "the repo root" for a deployed operator CLI, silently returning an arbitrary CWD (rather than raising) could cause `env_file`, and other app_dir-relative paths to point somewhere nonsensical without any diagnostic. This matches the brief's snippet exactly (verbatim `return here` fallback), so it's plan-mandated, but worth flagging since `resolve_paths` is likely invoked from a systemd unit with a controlled `WorkingDirectory=`, in which case `FOLDAPP_APP_DIR` should probably be mandatory in production. Not blocking for this task since `FOLDAPP_APP_DIR` is documented as an override precisely to avoid dependence on CWD-walking in production.
+
+**3. `state_override`/`FOLDAPP_STATE_DIR` uses truthy check, not "is not None" (Minor, matches brief).**
+`src/fold_at_scripps/foldapp/context.py:115-116`. `env.get("FOLDAPP_STATE_DIR")` then `if state_override else ...` means an explicitly-set-but-empty string (`FOLDAPP_STATE_DIR=""`) silently falls back to the default rather than erroring. Extremely unlikely in practice and matches the brief's snippet verbatim — noted only for completeness, not a real risk.
+
+No missing fields, no extra/undocumented surface, no misunderstanding of the spec found.
+
+## Task quality: Approved
+
+The implementation is a verbatim, faithful reproduction of the brief's spec — every field, property, unit filename, default path, and env-override name matches exactly, which is exactly what this foundational, name-sensitive task requires. The two Minor issues (untested `_find_app_dir` walk-up logic, silent CWD fallback) are both inherited directly from the brief's own reference implementation, so they're plan-mandated rather than implementer defects, and neither blocks correctness for the task as scoped — later tasks that wire up the CLI can exercise `_find_app_dir`'s real behavior end-to-end if needed.</result>
+<usage><subagent_tokens>32433</subagent_tokens><tool_uses>5</tool_uses><duration_ms>40476</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a92361464469ddb49</task-id>
+<tool-use-id>toolu_01VVmJiC1yNgT5TTHZhWH9uF</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a92361464469ddb49.output</output-file>
+<status>completed</status>
+<summary>Agent "Implement Task 3: state.py" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Excellent! Everything is complete. Let me create a final summary:
+
+---
+
+## Status: DONE
+
+**Commits created:**
+- `b558089` — `feat(foldapp): deploy-state file for rollback`
+
+**Test summary:**
+- 2/2 new tests pass (test_state.py); full suite: 182 passed, 2 warnings
+
+**Concerns:** None
+
+**Report file:** `/home/briney/git/fold-at-scripps/.superpowers/sdd/task-3-report.md`</result>
+<usage><subagent_tokens>28875</subagent_tokens><tool_uses>16</tool_uses><duration_ms>105650</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>aaad8842144511391</task-id>
+<tool-use-id>toolu_01W7eGxyEJDhg7z1ZJvL7DDT</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/aaad8842144511391.output</output-file>
+<status>completed</status>
+<summary>Agent "Review Task 3 (spec + quality)" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>No other code references `state.py` yet — expected, since Task 13 (which will consume this) hasn't landed. This task is self-contained per spec.
+
+---
+
+**Spec-compliance verdict: ✅**
+
+**Strengths**
+- `DeployState` exact field set/types/order match the brief precisely: `prev_ref: str | None`, `new_ref: str | None`, `backup_path: str | None`, `timestamp: str`, `frozen=True`.
+- `read_state`/`write_state` signatures match exactly; `write_state` creates parent dirs via `path.parent.mkdir(parents=True, exist_ok=True)` (`state.py:30`), satisfying Task 13's dependency contract.
+- Diff is minimal and self-contained — no scope creep, no unrelated edits.
+- Working-tree files match the diff byte-for-byte; nothing hidden or altered outside the reviewed diff.
+- `ruff check` and `ruff format --check` both pass clean on the two new files (verified independently).
+- Focused run `pytest tests/foldapp/test_state.py -W error -q` → 2 passed, 0 warnings. **This proves the "2 warnings" from the full-suite run are not attributable to this diff** — they are pre-existing elsewhere in the suite. Not this task's finding.
+
+**Issues**
+
+None Critical or Important.
+
+- Minor: `read_state` does not guard against malformed JSON or a JSON object missing/extra keys (e.g., `TypeError` from `DeployState(**data)` if a key is missing, `json.JSONDecodeError` if the file is corrupt). Brief only specifies "None if file missing," so this is not a spec violation — but a future robustness note for whoever integrates it in Task 13's rollback path, since a corrupted state file would raise instead of failing gracefully. Not a blocker for this task.
+- Minor: only 2 tests, both from the brief verbatim — no additional test for e.g. all-`None` optional fields or verifying `write_state` overwrites an existing file. Brief only required the two given tests; this is not a deficiency against spec, just noting minimal-not-exhaustive coverage.
+
+**Task quality: Approved**
+
+Reasoning: Implementation matches the brief's interfaces exactly (verified by direct code read, not just report trust). Round-trip correctness verified by reasoning through `asdict`/`json.dumps`/`json.loads`/`DeployState(**data)` — no lossy type involved since all fields are `str | None`. Parent-dir creation and missing-file→`None` behavior both directly inspected and correct. Ruff check/format independently re-verified, not just trusted from the report. The reported "2 warnings" in the full suite were independently isolated via a targeted `-W error` run and confirmed NOT to originate from this diff — so they are out of scope for this task's gate. No Critical or Important issues found.</result>
+<usage><subagent_tokens>31119</subagent_tokens><tool_uses>11</tool_uses><duration_ms>57020</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a435e914819e83378</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a435e914819e83378.output</output-file>
+<status>completed</status>
+<summary>Agent "Implement Task 4: envfile.py" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Perfect! Let me provide a final summary:
+
+---
+
+**Status:** DONE
+
+**Commits created:**
+- `8e70f17` — `feat(foldapp): .env scaffolding, secret gen, redaction`
+
+**Test summary:**
+- 4/4 new tests passing; 14/14 foldapp tests passing; 186/186 full suite passing with no regressions
+
+**Concerns:** None
+
+**Report file:** `/home/briney/git/fold-at-scripps/.superpowers/sdd/task-4-report.md`</result>
+<usage><subagent_tokens>33217</subagent_tokens><tool_uses>23</tool_uses><duration_ms>117167</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a5891cd975a3f1b15</task-id>
+<tool-use-id>toolu_01NhiwgYywvQJsUUwDaWMvYa</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a5891cd975a3f1b15.output</output-file>
+<status>completed</status>
+<summary>Agent "Review Task 4 (spec + quality)" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>No other file defines a "dev-default" secret constant to cross-check against — reasonable, since `secrets.token_urlsafe(48)` is inherently random and cannot coincide with any hardcoded default. This satisfies the constraint by construction.
+
+Now I have enough to write the review.
+
+---
+
+# Spec Compliance Verdict: ✅ (with one Important redaction-regex gap)
+
+## Strengths
+
+- `generate_secret_key()` uses `secrets.token_urlsafe(48)` — cryptographically strong, matches brief exactly (`src/fold_at_scripps/foldapp/envfile.py:15-17`).
+- `scaffold_env()` correctly implements never-overwrite: checks `paths.env_file.exists()` first and returns `False` without touching the file (`envfile.py:20-21`). Verified this is a real guard, not just test-shaped — the existence check happens before any secret generation or write.
+- Real secret is generated fresh in the template (no `CHANGE-ME`/static default) (`envfile.py:23-25`); confirmed by construction since `secrets.token_urlsafe` output can't collide with a hardcoded string.
+- `0o600` permission set immediately after write (`envfile.py:31`), before returning.
+- `redact_settings()` correctly masks `secret_key` → `"***"` and handles the common `user:password@host` case, leaving username/host/gpu_count untouched — verified against the brief's test case and additional manual cases (plain URL, no-password URL).
+- Matches brief's reference implementation almost verbatim; `FoldappPaths` fields (`env_file`, `data_dir`, `app_dir`) used are real fields from `context.py:16-19`, confirmed consistent.
+- Ruff line-length check passed (no lines &gt; 100 chars); `rich` already a project dependency, so no new dependency introduced.
+
+## Issues
+
+**1. [Important] Redaction regex under-masks passwords containing `@` — partial password leaks into redacted output.**
+`src/fold_at_scripps/foldapp/envfile.py:33` — regex is `r"://([^:/@]+):[^@]*@"`. The password-matching group `[^@]*` is non-greedy against `@` by construction, so if the password itself contains an `@` (a character that is legal, if unusual, in a URL-encoded or raw postgres password), the substitution only masks up to the first `@` and leaves the remainder of the password exposed in the "redacted" output. Verified:
+```
+in:  REDACTED
+out: REDACTED   # "ss" leaked
+```
+This is exactly the failure mode the reviewer brief calls out ("note if it mishandles a URL with... special chars"). Since `redact_settings` exists specifically to keep secrets out of logs/API responses, a partial leak defeats its purpose for any password containing `@`. Likely low real-world frequency (most generated/deployed DB passwords won't contain `@`), but it is a correctness gap in a security-sensitive function with no test coverage for this case. This exact regex is also what the brief's own Step 3 reference snippet specifies, so this is **plan-mandated** — the implementer copied the brief's regex verbatim rather than hardening it.
+Fix: match greedily to the last `@` before the host, e.g. `r"://([^:/@]+):[^@]*@(?=[^@]*$)"` or better, use `urllib.parse.urlsplit`/`urlunsplit` to parse the netloc properly instead of a hand-rolled regex, which also avoids issues if the URL has no scheme separator quirks.
+
+**2. [Minor] Type signature deviates from brief's stated interface.**
+`envfile.py:1` uses `Mapping[str, Any]` / `dict[str, Any]` for `redact_settings`, while the brief's "Interfaces" section specifies `Mapping[str, object]) -&gt; dict[str, object]`. Functionally compatible for the test cases exercised, and arguably more permissive for typed callers, but it's a literal deviation from the documented interface that later tasks may depend on for type-checking strictness. Not a runtime bug.
+
+**3. [Minor] `dry_run=True` path is entirely untested.**
+`envfile.py:26-28` — the `dry_run` branch (print-only, no write, returns `True`) has zero test coverage; the brief's test file (`tests/foldapp/test_envfile.py`) also doesn't test it, so this matches the brief's own test gap (not implementer-introduced), but it means a regression here (e.g., dry-run silently writing) would go undetected. Worth flagging for later CLI-integration tests (Task brief mentions `dry_run` is presumably exercised by a higher-level CLI task).
+
+**4. [Minor] No-password / malformed URL cases silently no-op rather than erroring.**
+Verified: `postgresql+asyncpg://fold@localhost/db` (no password) and `postgresql+asyncpg://localhost/db` (no credentials at all) both pass through `redact_settings` unchanged — no crash, no partial mask, which is the correct/safe behavior (nothing to leak). Noting this only as confirmation, not a defect.
+
+## Tests
+
+Did not re-run the full suite per instructions (trusting reported 4/4 new, 14/14 foldapp, 186/186 full). I did run a standalone Python snippet (outside pytest, no repo mutation) to verify the redaction regex against edge cases not covered by the brief's tests, which surfaced Issue #1. Recommend adding a regression test:
+```python
+def test_redact_masks_password_containing_at_symbol():
+    out = redact_settings({"database_url": "REDACTED"})
+    assert "ss" not in out["database_url"]
+```
+This will currently fail against the shipped regex, confirming the leak in Issue #1.
+
+## Task quality: Needs fixes
+
+Reasoning: Core contract (never-overwrite, real secret, 0o600 perms, secret masking) is correctly and verifiably implemented — the primary security guarantees hold. However, `redact_settings` has a genuine (if narrow) password-leak edge case in a function whose entire purpose is secret redaction, which is Important by the calibration given ("a redaction that leaks... the password would be Important/Critical"). Because the flawed regex is verbatim from the brief's own reference implementation, this is plan-mandated — the fix should be applied here rather than deferred, but it does not reflect implementer negligence beyond not hardening the brief's example. Recommend patching the regex (or switching to `urllib.parse`) and adding the `@`-in-password regression test before sign-off; the type-signature and dry-run-coverage items are minor and can be follow-ups.</result>
+<usage><subagent_tokens>34003</subagent_tokens><tool_uses>9</tool_uses><duration_ms>65427</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>ac5bc3af65ea02dac</task-id>
+<tool-use-id>toolu_013otExK5i9nJMnX9W4uZz4e</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/ac5bc3af65ea02dac.output</output-file>
+<status>completed</status>
+<summary>Agent "Fix Task 4: harden DB URL redaction" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Excellent! All changes are in place. Here's the summary:
+
+---
+
+**Status:** DONE
+
+**Commit:** `b048430` — `fix(foldapp): harden DB URL password redaction (urllib.parse)`
+
+**Test Summary:**
+- ✅ New test (`test_redact_masks_password_containing_at_symbol`): PASSED
+- ✅ All envfile tests (5): PASSED
+- ✅ Full suite (187 tests): PASSED
+- ✅ Ruff check &amp; format: CLEAN
+
+**Report File:** `/home/briney/git/fold-at-scripps/.superpowers/sdd/task-4-report.md`</result>
+<usage><subagent_tokens>28335</subagent_tokens><tool_uses>16</tool_uses><duration_ms>73576</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>ab96630ef127b0210</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/ab96630ef127b0210.output</output-file>
+<status>completed</status>
+<summary>Agent "Re-review Task 4 after fix" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>The diff file shows `envfile.py` as a **new file** (`new file mode 100644`, `--- /dev/null`), meaning this diff package squashes both commits (8e70f17 feat + b048430 fix) into a single "file created" view rather than showing the fix as an incremental patch. That's fine for review purposes — it means I'm looking at the final state directly. Confirming: the final file has no `import re` at all (only `import secrets`, `from collections.abc import Mapping`, `from typing import Any`, `from urllib.parse import urlsplit, urlunsplit`, `import rich`, and the local import). So `re` was correctly removed — no F401 risk, consistent with the "removed `import re`" claim in the fix report.
+
+Now confirming the other originally-approved behaviors are intact in this final diff: never-overwrite (`if paths.env_file.exists(): return False`), real secret (`secrets.token_urlsafe(48)` at write time, no placeholder), and file mode 0o600 (`paths.env_file.chmod(0o600)`) — all present verbatim in the code shown above, unchanged by the fix.
+
+Test quality check on the new regression test:
+```python
+def test_redact_masks_password_containing_at_symbol():
+    out = redact_settings({"database_url": "REDACTED"})
+    assert "ss" not in out["database_url"]
+    assert "p@ss" not in out["database_url"]
+    assert out["database_url"].startswith("REDACTED")
+```
+This is meaningful: `"ss" not in ...` is the key assertion that would have failed under the old regex (which produced `...fold:***@ss@localhost:5432/db`, where `"ss"` is present). The `startswith` assertion also pins down host/port/path preservation. Good coverage, not just a happy-path re-check.
+
+No remaining doubts justify running the suite myself — the reasoning is fully verified both analytically and empirically against the exact reference case plus adjacent edge cases (no-password, no-credentials, double-`@` password). I'll skip running the full test suite per instructions since the evidence already closes the loop.
+
+---
+
+## Verdict: ✅ Spec-compliant. The Important redaction finding is **RESOLVED**.
+
+### Strengths
+- `_redact_db_url` (`src/fold_at_scripps/foldapp/envfile.py:66-75`) uses `urlsplit`/`urlunsplit` to parse and reconstruct the URL from typed components (`scheme`, `username`, `hostname`, `port`, `path`, `query`, `fragment`) rather than doing textual substitution — this structurally guarantees the raw password value is never echoed back in any form, including when the password itself contains `@` or multiple `@` characters (verified empirically: `p@ss@word` → fully masked).
+- Correctly reasons through `urlsplit` semantics: userinfo/host splits at the **last** `@` in netloc, password splits at the **first** `:` within userinfo — so `p@ss` is captured whole as the password, not truncated at the first `@`.
+- Host, port, and path are all preserved unchanged in the reconstructed URL (verified: `localhost:5432/db` unaffected).
+- No-password (`postgresql+asyncpg://localhost:5432/db`) and no-credentials-but-username (`postgresql+asyncpg://fold@localhost:5432/db`) cases both return the URL unchanged via the `parts.password is None` early return — no crash, no incorrect mutation.
+- `import re` was fully removed (final file only imports `secrets`, `Mapping`, `Any`, `urlsplit`/`urlunsplit`, `rich`, and `FoldappPaths`) — no F401 risk.
+- New regression test (`tests/foldapp/test_envfile.py:137-141`) is meaningful: its `"ss" not in ...` assertion is precisely the check that would have failed under the old regex, not a redundant happy-path check.
+- Previously-approved behaviors are untouched by the fix: never-overwrite guard (`envfile.py:52`), real generated secret via `secrets.token_urlsafe(48)` at write time (`envfile.py:47,55`), and `chmod(0o600)` (`envfile.py:62`) all remain exactly as originally implemented.
+
+### Issues
+None found. No partial-leak paths, no crashes on edge-case URLs, no unused imports, no regressions to the previously-approved contract surface.
+
+**Task quality: Approved.** The fix correctly replaces string-based password truncation with structural URL parsing, closing the `@`-in-password leak for all cases tested (including multi-`@` passwords), while preserving all other spec-mandated behaviors (never-overwrite, real secret, 0o600, exact function names) and leaving no lint/import debris.</result>
+<usage><subagent_tokens>38539</subagent_tokens><tool_uses>6</tool_uses><duration_ms>51599</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a10f113a382c8240e</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a10f113a382c8240e.output</output-file>
+<status>completed</status>
+<summary>Agent "Implement Task 5: units.py + templates" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Status: DONE
+
+Commits created: `e812562` feat(foldapp): render + install systemctl --user units
+
+Test summary: `tests/foldapp/test_units.py` 3/3 passed; full suite `uv run pytest` 190 passed, 2 pre-existing unrelated warnings; ruff check and ruff format --check both clean.
+
+Concerns: One line in the brief's verbatim test code was 101 chars; ran `ruff format` on `tests/foldapp/test_units.py` to bring it under the 100-char limit (no semantic change). Also note: `.superpowers/sdd/task-5-report.md` previously held a stale report for an unrelated frontend code-splitting task — overwritten with the correct content.
+
+Report: `/home/briney/git/fold-at-scripps/.superpowers/sdd/task-5-report.md`</result>
+<usage><subagent_tokens>49980</subagent_tokens><tool_uses>29</tool_uses><duration_ms>205771</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a7b915cf018162967</task-id>
+<tool-use-id>toolu_01HkZADuEAeYihcfrtAkHrBj</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a7b915cf018162967.output</output-file>
+<status>completed</status>
+<summary>Agent "Review Task 5 (spec + quality)" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Single commit, exactly the four files declared in the brief's Step 6, nothing extra. This confirms the report's claim about scoped `git add`.
+
+I have everything needed for the review.
+
+---
+
+# Task 5 Review: `units.py` + systemd unit templates
+
+**Spec-compliance verdict: ✅ Compliant**
+
+## Strengths
+
+- `render_unit` and `install_units` signatures match the brief's interface contract exactly, including keyword-only defaults (`port=8000`, `uv_path=None`, `autobio_dir=None`, `dry_run=False`).
+- Template directory resolution (`src/fold_at_scripps/foldapp/units.py:13`, `_TEMPLATE_DIR = Path(__file__).resolve().parents[3] / "deploy" / "systemd"`) is deliberately independent of `paths.app_dir` — verified by direct execution that `parents[3]` resolves to the actual repo root, so app_dir-stubbing tests still find real templates.
+- `_build_path` (`units.py:117-126`) correctly de-duplicates while preserving order (`dict.setdefault` insertion-order trick). Verified empirically: `_build_path('/usr/bin/uv', None)` → `/usr/bin` appears once even though it's also in `_BASE_PATH_DIRS`.
+- Edge case "autobio not found" is handled cleanly: verified directly by stripping `PATH` to `/nonexistent` and confirming `shutil.which("autobio")` returns `None`, and the resulting rendered PATH cleanly omits it with no `None`-string leakage or crash.
+- `install_units` dry_run threading verified end-to-end: `dry_run=True` writes zero files (`user_unit_dir` never created) and calls `shell.run(..., dry_run=True)` which only prints; `dry_run=False` writes both units correctly with substituted port and PATH.
+- `render_unit("bogus", ...)` raises `ValueError` as required — verified directly.
+- Templates verified byte-for-byte against the brief: api unit has `ExecStartPre=$uv run alembic upgrade head` + `ExecStart=$uv run foldapp serve --port $port`; scheduler unit has no migration line and `ExecStart=$uv run foldapp scheduler`; both have `WantedBy=default.target`.
+- No collision with pre-existing `deploy/fold-api.service` / `deploy/fold-scheduler.service` (system-level units from an earlier commit) — confirmed these live in `deploy/`, the new templates in `deploy/systemd/`, distinct paths.
+- `subprocess` is never invoked directly; `install_units` goes through `shell.run` (`units.py:160`), consistent with the global "never `shell=True`" constraint and Task 1's `shell.run` wrapper (confirmed `shell.py` uses `subprocess.run` with list args, `# noqa: S603` justified).
+- Single commit (`e812562`), touches exactly the four files named in the brief's Step 6 — no scope creep.
+- Reformatted test line confirmed to be a pure line-wrap of the identical `render_unit(...)` call (same positional/keyword args, same assertions below it unchanged) — no weakened assertion.
+- Ruff clean on the actual Python files (`ruff check` and `ruff format --check` both pass on `units.py` and `test_units.py`), confirmed by direct re-run.
+
+## Issues
+
+None rise to Critical or Important. One Minor, plan-mandated observation:
+
+- **Minor (plan-mandated).** `units.py:158-159` — in `install_units`, the api and scheduler `render_unit` calls don't share a single resolved `uv_path`/`autobio_dir`; each call independently re-invokes `shutil.which` when not passed. In a pathological environment where PATH changes between the two calls (extremely unlikely in practice, e.g. within microseconds of `install_units` executing) the two units could theoretically get different PATH values. This is exactly the code given verbatim in the brief's Step 4, so it's plan-mandated, not an implementer defect — flagging only for completeness, not actionable within this task's scope.
+
+## Task quality: Approved
+
+Implementation matches the brief verbatim (templates, `units.py`, tests), all consumed interfaces (`FoldappPaths`, `shell.run`) are used correctly and unchanged, edge cases (dedup, autobio-not-found, unknown kind, dry_run) were independently verified by direct execution against the real code rather than taken on faith, and the one deviation from the brief's literal test text (line-wrap for `ruff format`) is confirmed semantically identical. No Critical or Important issues found.</result>
+<usage><subagent_tokens>40138</subagent_tokens><tool_uses>13</tool_uses><duration_ms>101401</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>afa991b9b91b5982b</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/afa991b9b91b5982b.output</output-file>
+<status>completed</status>
+<summary>Agent "Implement Task 6: preflight.py" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Perfect. All work is complete. Here's my final report:
+
+---
+
+**Status: DONE**
+
+**Commits created:**
+- `f85ed47` — feat(foldapp): preflight checks engine
+- `69f2b8b` — style: ruff format preflight.py
+
+**Test summary:**
+All 5 task-specific tests pass; full suite 195 passed (no regressions).
+
+**Concerns:**
+None. Implementation follows brief exactly; ruff clean; all quality gates green.
+
+**Report file:**
+`/home/briney/git/fold-at-scripps/.superpowers/sdd/task-6-report.md`</result>
+<usage><subagent_tokens>40646</subagent_tokens><tool_uses>26</tool_uses><duration_ms>178091</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a705b090e11b9b2fd</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a705b090e11b9b2fd.output</output-file>
+<status>completed</status>
+<summary>Agent "Review Task 6 (spec + quality)" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>This confirms `check_env`'s literal string match (`"dev-insecure-secret-change-me"` / `"CHANGE-ME"`) matches the actual sentinel values used elsewhere in the codebase (`main.py::_DEV_SECRET_KEY`, `deploy/fold.env.example`). This is correctly matching the real-world default rather than an arbitrary placeholder — good.
+
+I have everything I need. Let me finalize the review.
+
+---
+
+## Spec-compliance verdict: ✅ Compliant
+
+The implementation matches the brief's Step 3 reference code almost verbatim (multi-line reformatting for line length only), and the plan-mandated interfaces are all present with correct names, signatures, and semantics.
+
+## Strengths
+
+- All required exports present with exact names: `Status` (StrEnum OK/WARN/FAIL), `CheckResult(name, status, detail, fix)`, `check_python`, `check_uv`, `check_docker`, `check_autobio`, `check_gpu`, `check_port_free`, `check_env`, `check_linger`, `run_checks`, `has_failures` — all match the brief exactly.
+- `check_autobio` correctly WARNs in `context="dev"` and FAILs in `context="deploy"` (`preflight.py:98`); `check_gpu` WARNs (never FAILs) whether Docker is absent (`:99`) or GPU access fails (`:121`) — matches brief.
+- `check_uv`/`check_python` correctly FAIL when the tool is missing/version too old — no false leniency.
+- Shell-outs (`check_docker`, `check_gpu`, `check_linger`) all call `runner(..., check=False)`, so a non-zero exit is classified rather than raising `CommandError` (`preflight.py:63,106-116,137`).
+- Only `run` imported from `fold_at_scripps.foldapp.shell` — no `CommandError` import; confirmed via `grep` — F401-clean.
+- `run_checks` includes `check_linger` only when `context == "deploy"` (`preflight.py:177-178`), matching the brief precisely.
+- No extra/invented checks beyond the 8 specified — no scope creep (YAGNI respected).
+- `check_env`'s bad-secret sentinel strings (`"dev-insecure-secret-change-me"`, `"CHANGE-ME"`) match the actual literals used elsewhere in the codebase (`src/fold_at_scripps/main.py:23`, `deploy/fold.env.example:5`) rather than being arbitrary/inconsistent placeholders.
+- `check_port_free` uses `socket.connect_ex` inside a `with` block (proper resource cleanup), non-blocking probe, no `shell=True` anywhere.
+- Ruff-verified: `line-length = 100` in `pyproject.toml:42`, `select = ["E", "F", "I", "UP", "B"]`; longest line in the file is 99 chars (measured directly) — no E501 violations remain after the follow-up format commit.
+- Test file is a verbatim copy of the brief's Step-1 spec — no deviation, 5/5 tests as reported.
+
+## Issues
+
+**Minor — test coverage gap beyond the plan's minimum.** `tests/foldapp/test_preflight.py` only exercises `check_uv`, `check_autobio`, and `has_failures` (the brief's mandated minimum). `check_python`, `check_docker`, `check_gpu`, `check_port_free`, `check_env`, `check_linger`, and `run_checks` (including the deploy-only `check_linger` inclusion) have zero test coverage. This is plan-mandated (the brief's Step 1 test is exactly what was copied), so it isn't a deviation, but later tasks (e.g., the `doctor` CLI command) will rely on this engine's untested branches (GPU WARN-not-FAIL path, env bad-secret detection, port-in-use WARN). Recommend a follow-up task/commit adds coverage for at least `check_env` (FAIL on missing/bad secret, OK otherwise) and `run_checks` context branching, since those are pure-logic paths that are cheap to test and carry real risk if broken silently.
+
+**Minor — untyped `runner` parameter.** `check_docker`, `check_gpu`, and `check_linger` declare `runner=run` with no type annotation (`preflight.py:59,84,135`), unlike `which: Which = shutil.which` which is typed via the `Which` alias. This is inherited verbatim from the brief's own reference code (not implementer-introduced), so it's a plan-mandated gap rather than a new defect. A `Runner = Callable[..., CommandResult]` alias would have been easy to add and is consistent with the existing `Which` pattern, but this doesn't block approval since it mirrors the spec exactly.
+
+No Critical or Important issues found. `check_gpu`'s hardcoded image tag (`nvidia/cuda:12.4.0-base-ubuntu22.04`) and the network pull it implies is a design choice baked into the brief, not something introduced by the implementer, and is out of scope for this task-level review.
+
+## Task quality: Approved
+
+The diff is a faithful, essentially line-for-line implementation of the brief's Step 3 reference code (differences are purely cosmetic reformatting for the 100-char line limit). All produced interfaces match the exact names and signatures later tasks depend on. Status semantics (autobio dev/deploy split, GPU WARN-not-FAIL, uv/python FAIL-on-missing) are all correctly implemented and directly verifiable in the diff. Shell-out safety (`check=False`, list-args, no `shell=True`) and the F401 import constraint are both satisfied. The two Minor findings (thin test coverage beyond the plan's mandated minimum, untyped `runner` param inherited from the spec) do not rise to "can't be trusted until fixed" — they're reasonable follow-up hardening, not defects blocking this task's integration.</result>
+<usage><subagent_tokens>42785</subagent_tokens><tool_uses>14</tool_uses><duration_ms>66213</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a51d8a6380abace11</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a51d8a6380abace11.output</output-file>
+<status>completed</status>
+<summary>Agent "Implement Task 7: postgres.py + maintenance" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Status: DONE
+
+Commits created: `3552194` — "feat(foldapp): postgres helpers + set_maintenance_mode" (on branch `feature/foldapp-cli`)
+
+Test summary: 199 passed (full suite); integration test `test_set_maintenance_mode_roundtrip` ran and passed (not skipped — Postgres was reachable in this environment); ruff check and ruff format both clean.
+
+Concerns: None. Two lines copied verbatim from the brief exceeded the 100-col limit (`pg_isready` command list, one assert line); fixed with `ruff format` auto-wrap only, no logic change.
+
+Report file: `/home/briney/git/fold-at-scripps/.superpowers/sdd/task-7-report.md`</result>
+<usage><subagent_tokens>50685</subagent_tokens><tool_uses>28</tool_uses><duration_ms>209028</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a8dbb74c7dc5a3385</task-id>
+<tool-use-id>toolu_01EG64ETaCa2ograbM4gqFGt</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a8dbb74c7dc5a3385.output</output-file>
+<status>completed</status>
+<summary>Agent "Review Task 7 (spec + quality)" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Local in-function imports are an established pattern in this codebase's test suite (not a new/odd choice). Everything checks out. This confirms compliance across the board. Let me now write the final review.
+
+---
+
+**Spec-compliance verdict: ✅**
+
+All four `postgres.py` functions exist with exact signatures matching the brief; `set_maintenance_mode` was appended correctly; the integration test uses the real `db_session` fixture and `@pytest.mark.integration`; no `shell=True` anywhere; `restore` correctly bypasses `shell.run` for stdin streaming.
+
+## Strengths
+
+- `wait_ready` (`postgres.py:87-109`) correctly implements a bounded poll loop: calls the runner first, checks the deadline second, sleeps last — guarantees at least one attempt, never spins infinitely, and honors `timeout=0.05` in the unit test by returning `False` on the very first failed check without ever invoking `sleep`.
+- Gzip round-trip is genuinely compatible: `dump` writes text-mode gzip (`gzip.open(dest, "wt", encoding="utf-8")`, `postgres.py:89`) and `restore` reads text-mode gzip with the same encoding (`postgres.py:hunk`, `gzip.open(src, "rt", encoding="utf-8")`) — no bytes/text mismatch.
+- `restore` correctly avoids `shell.run` (which can't stream stdin) and calls `subprocess.run` directly with list args, `input=sql, text=True, capture_output=True`, raising `RuntimeError` with a truncated stderr tail on non-zero exit — matches the brief's explicit constraint verbatim.
+- `set_maintenance_mode` is a clean, minimal append (`system_settings.py:36-40`) that reuses `get_system_settings` and commits; existing file content (`get_system_settings`, imports, singleton logic) is untouched.
+- `dump`'s non-dry-run path uses `run(...)` (default `check=True`), so a failing `pg_dump` raises before any gzip file is written — no silent creation of a corrupt/empty backup.
+- Test infrastructure claims verified directly: `db_session` fixture and `integration` marker/auto-skip exist in `tests/conftest.py:67-94`; `asyncio_mode = "auto"` and the `integration` marker are registered in `pyproject.toml:68-71`; `SystemSettings.maintenance_mode` field exists (`models/system.py:20`).
+- No `shell=True` anywhere in the diff; both `subprocess.run` call sites (`shell.py:40`, `postgres.py`) use list args only.
+- `ruff check`'s configured `select = ["E","F","I","UP","B"]` (`pyproject.toml:46`) doesn't include bandit's `S` rules, so the `# noqa: S603` comments are inert but harmless — consistent with the pre-existing pattern in `shell.py:40`, not a new inconsistency.
+
+## Issues
+
+None rise to Critical or Important. Two Minor observations:
+
+- **Minor** — `postgres.py`, `dump`/`restore`: real (non-dry-run) subprocess paths for `compose_up`, `dump`, and `restore` have no unit-test coverage (only `wait_ready` both branches and `dump`'s dry-run no-op are tested), leaving the actual `pg_dump`/`psql` invocation and error-raising path (`RuntimeError` on non-zero) exercised only implicitly. This exactly matches the brief's Step 1 test list, though, so it's plan-mandated scope, not a gap introduced by the implementer.
+- **Minor** — `# noqa: S603` comments in `postgres.py` are dead weight under the current ruff config (no `S` rules selected) — harmless cosmetic carryover from the brief's literal code, not a functional issue.
+
+## Task quality: Approved
+
+Reasoning: every produced interface matches the exact signature Tasks 11/13 depend on; the timeout loop is correct and terminates; the gzip write/read modes are compatible; `restore` satisfies the brief's explicit "must use subprocess.run directly with stdin, never shell.run" constraint; `set_maintenance_mode` is a faithful, non-destructive append reusing the existing accessor; and all test-fixture/marker/config claims in the report were independently verified against `conftest.py`, `pyproject.toml`, and the `SystemSettings` model rather than taken on faith. No defects found that would make this untrustworthy for downstream tasks.</result>
+<usage><subagent_tokens>41006</subagent_tokens><tool_uses>11</tool_uses><duration_ms>59513</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>ae9df0095a1609e9b</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/ae9df0095a1609e9b.output</output-file>
+<status>completed</status>
+<summary>Agent "Implement Task 8: frontend.py" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Perfect! Now I'll provide the final summary:
+
+---
+
+**Status:** DONE
+
+**Commit:**
+- `22759e7` feat(foldapp): frontend build + migrate helpers
+
+**Test Summary:**
+2 new tests pass; full suite 201/201 passing (includes 2 warnings unrelated to this task)
+
+**Concerns:**
+None.
+
+**Report File:**
+`/home/briney/git/fold-at-scripps/.superpowers/sdd/task-8-report.md`</result>
+<usage><subagent_tokens>28044</subagent_tokens><tool_uses>18</tool_uses><duration_ms>87271</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a0e6a1635e64e516f</task-id>
+<tool-use-id>toolu_011oNM61KNY6MbKfgDQ5jVkz</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a0e6a1635e64e516f.output</output-file>
+<status>completed</status>
+<summary>Agent "Review Task 8 (spec + quality)" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Both dependencies confirm the interfaces used. `shell.run` signature matches (`runner=run` default, `dry_run`, `cwd` params), and `FoldappPaths.app_dir` is a real field. Now checking `--output` flag value formatting against the brief's exact spec: `--output type=local,dest=frontend/dist` — matches exactly. Command lists match exactly too.
+
+Everything checks out. No further investigation needed — the diff is small and self-contained, and I've confirmed the dependencies it relies on.
+
+---
+
+**Spec-compliance verdict: ✅ Compliant**
+
+Both functions exist with exact required signatures and behavior:
+- `build_frontend(paths, *, dry_run=False, runner=run) -&gt; None` — runs `docker build --target dist --output type=local,dest=frontend/dist .` (`src/fold_at_scripps/foldapp/frontend.py:12-23`), `cwd=paths.app_dir`, `dry_run` threaded.
+- `migrate(paths, *, dry_run=False, runner=run) -&gt; None` — runs `uv run alembic upgrade head` (`src/fold_at_scripps/foldapp/frontend.py:26-28`), `cwd=paths.app_dir`, `dry_run` threaded.
+- `runner` defaults to `shell.run` (imported as `run` from `fold_at_scripps.foldapp.shell`, confirmed real signature `run(args, *, dry_run=False, check=True, capture=True, cwd=None, env=None)` in `src/fold_at_scripps/foldapp/shell.py:27-35` — compatible with how it's called here).
+- Exact arg lists match the brief token-for-token: `["docker", "build", "--target", "dist", "--output", "type=local,dest=frontend/dist", "."]` and `["uv", "run", "alembic", "upgrade", "head"]`.
+
+Nothing missing, nothing extra, nothing misunderstood.
+
+## Strengths
+
+- Implementation is a byte-for-byte match of the brief's Step 3 code (just reformatted for line length by ruff's formatter, splitting the docker arg list across multiple lines) — no scope creep, no added validation/logic.
+- Tests (`tests/foldapp/test_frontend.py:38-45`) assert the exact `migrate` command list via `==`, which is a strong, precise check per the calibration guidance ("tests assert the exact command lists").
+- Docstrings are one-line Google-style summaries appropriate for trivial shell-out wrappers; `from __future__ import annotations` present; type hints present on both public functions.
+- `runner` injection cleanly enables dependency-free testing (fake runner captures args, returns `CommandResult`), matching the pattern established by earlier tasks (e.g., `context.py`'s `resolve_paths` testability pattern).
+
+## Issues
+
+- **Minor** — `tests/foldapp/test_frontend.py:35`: the `build_frontend` test uses a partial/weak assertion (`calls[0][0] == "docker" and "--target" in calls[0] and "dist" in calls[0]`) rather than an exact list equality check like the `migrate` test uses. This is copied verbatim from the brief itself (task-8-brief.md:35), so it's not a deviation introduced by the implementer, but it means the full `--output type=local,dest=frontend/dist .` sequence is unverified by any test — a typo in the `--output` value or a missing `.` positional arg would not be caught. Since the brief prescribed this exact test, this is plan-mandated rather than an implementer defect.
+- **Minor** — `runner` and other params on both functions are untyped (`runner=run` has no type annotation, e.g., `frontend.py:12` and `frontend.py:26`). A `Callable[..., CommandResult]` (or a `Protocol`) annotation would satisfy "type hints on all function signatures" more literally. However, the brief's own Step 3 code sample omits this annotation too, so this is plan-mandated, not an implementer choice.
+
+No Critical or Important issues found. Ruff/format claims are consistent with the code shown (line lengths under 100, import order stdlib→local with a blank-line separation appropriate for isort/black profile).
+
+## Task quality: Approved
+
+The diff is a precise, minimal implementation matching the brief's exact function names, signatures, command argument lists, and `cwd` usage. The only two nitpicks (weak assertion in one test, missing `Callable` type on `runner`) are both inherited directly from the brief's prescribed code — not implementer-introduced defects — so they don't block approval for this task-scoped gate.</result>
+<usage><subagent_tokens>30413</subagent_tokens><tool_uses>5</tool_uses><duration_ms>28778</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a03f3bfa46186e728</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a03f3bfa46186e728.output</output-file>
+<status>completed</status>
+<summary>Agent "Implement Task 9: service.py + run.py" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Task complete. Summary below.
+
+- Status: DONE
+- Commits created: `355aee0` feat(foldapp): systemctl/journal wrappers + serve/scheduler entries
+- Test summary: 7/7 new tests pass (test_service.py, test_run.py); full suite 208 passed, 2 pre-existing unrelated warnings
+- Concerns: One minor deviation from brief — wrapped the `is_active` return line across two lines (identical behavior) to satisfy the 100-char ruff line-length limit, since the brief's verbatim one-liner was 101 chars. Everything else matches the brief exactly.
+- Report file: `/home/briney/git/fold-at-scripps/.superpowers/sdd/task-9-report.md`</result>
+<usage><subagent_tokens>46391</subagent_tokens><tool_uses>27</tool_uses><duration_ms>173808</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a295315c4ae840746</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a295315c4ae840746.output</output-file>
+<status>completed</status>
+<summary>Agent "Review Task 9 (spec + quality)" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Everything matches. The commit is real, matches the diff exactly, and `journal`'s implementation is byte-identical to the brief (only the fence-marker line differs in the diff comparison, which is just markdown formatting noise).
+
+All verification points confirmed. Here is my review.
+
+---
+
+**Spec-compliance verdict: ✅**
+
+## Strengths
+
+- All produced names match exactly what Tasks 10–13 depend on: `UNIT_NAMES`, `resolve_units`, `systemctl`, `is_active`, `journal` in `service.py`; `serve`, `scheduler` in `run.py`. Signatures match the brief verbatim (`service.py:1-40`, `run.py:1-22`).
+- `resolve_units("all")` returns `["fold-api", "fold-scheduler"]` in dict order; single keys resolve correctly; unknown target raises `ValueError` (`service.py:94-100`) — matches brief and tests pass per report.
+- `systemctl` builds `["systemctl", "--user", action, *resolve_units(target)]` and passes `dry_run` through to `shell.run` (`service.py:103-105`), consistent with `shell.run`'s real signature (`shell.py:29-35`).
+- `is_active` compares `stdout.strip() == "active"` against a `runner` default (`service.py:108-110`), correctly using `check=False` so a non-zero `is-active` exit doesn't raise via `shell.run`'s `check=True` default (`shell.py:52-56`).
+- `journal` builds `journalctl --user -u &lt;unit&gt; [-u &lt;unit&gt; ...] [-f]` and calls `os.execvp("journalctl", args)` (`service.py:113-121`) — not routed through `shell.run`, exactly per the brief's deliberate terminal-handoff design. `args[0]` correctly duplicates as `argv[0]` for `execvp`.
+- `run.serve` calls `configure_logging(settings.log_level)` then `uvicorn.run("fold_at_scripps.main:app", host=host, port=port or settings.api_port)` (`run.py:14-16`) — verified `fold_at_scripps.main:app` exists (`main.py:79`, `app = create_app()`) and `configure_logging(level: str = "INFO")` signature matches the call (`logging_config.py:11`).
+- `run.scheduler` lazily imports and delegates to `fold_at_scripps.scheduler.main.main` (`run.py:19-21`), which takes no arguments (`scheduler/main.py:64-67`) — matches the test's mock target `"fold_at_scripps.scheduler.main.main"` exactly, and the lazy (function-body) import is what makes that patch path work correctly rather than patching a stale re-imported name.
+- `config.py` change is a single line, `api_port: int = 8000`, inserted after `frontend_dist` with no other lines touched (`config.py:26`) — confirmed via full-file read; the rest of `Settings` is untouched.
+- Module-level `import uvicorn` (not `from uvicorn import run`) is the correct choice for the brief's test, which mocks `"uvicorn.run"` as a module attribute — verified this resolves correctly.
+- Line-length deviation (splitting the `is_active` return into two lines) is faithfully and transparently disclosed in the report, preserves identical behavior, and is required to satisfy the global 100-char/ruff constraint, which is explicitly stated to take precedence. Confirmed via `awk` line-length scan: no line in either new file exceeds 100 chars, and `ruff check` passes clean on both files at HEAD.
+- `git show --stat` on `355aee0` matches the diff file exactly; commit is real and self-contained (no unrelated file changes).
+
+## Issues
+
+None found. No Critical, Important, or Minor issues.
+
+- `resolve_units`, `systemctl`, `is_active`, `journal`, `serve`, `scheduler`, and the `config.py` edit all verified concretely against the brief's exact text and against the actual runtime dependencies (`shell.run`, `scheduler.main.main`, `main.app`, `configure_logging`) — no mismatches.
+- The two items flagged in the report's own "Concerns" section (no dedicated tests for `systemctl`/`journal`; no type annotation on `runner` param) are non-blocking by the brief's own scope — Step 1 of the brief only specifies tests for `resolve_units` and `is_active`/`serve`/`scheduler`, and the brief's own reference implementation likewise leaves `runner` unannotated. Not a defect against this task's contract.
+
+## Task quality: Approved
+
+Every produced symbol matches the brief's required names/signatures byte-for-byte except one disclosed, behavior-preserving line-wrap forced by the global lint constraint (which the brief itself would have failed had it been pasted verbatim). The `os.execvp` vs `shell.run` distinction, the `uvicorn.run` mock-path sensitivity, and the `scheduler.main.main` lazy-import/mock-patch interaction — the three trickiest correctness traps in this task — are all handled correctly and verified against actual repository code, not just asserted. The `config.py` edit is a clean single-line insertion with no collateral changes. Nothing here needs to be revisited before Tasks 10–13 build on it.</result>
+<usage><subagent_tokens>38266</subagent_tokens><tool_uses>9</tool_uses><duration_ms>54005</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a2e8cb9a91026b83a</task-id>
+<tool-use-id>toolu_01KZ7ZvpzGKqXZugNVVCMn5N</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a2e8cb9a91026b83a.output</output-file>
+<status>completed</status>
+<summary>Agent "Implement Task 10: CLI commands" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Committed cleanly. Note the working branch was `feature/foldapp-cli`, not `feature/deployment-packaging` as stated in the env snapshot — that's just the snapshot being stale relative to this session's checkout.
+
+- Status: DONE
+- Commits created: `2241eb4` feat(foldapp): doctor, version, config, serve, scheduler commands
+- Test summary: 5/5 in `tests/foldapp/test_cli.py` pass; full suite 212 passed; ruff check + format clean
+- Concerns: Brief's exact help-string change (`app` help dropped the "foldapp: " prefix) broke the pre-existing `test_help_lists_command_group` assertion (`"foldapp" in output`); fixed minimally by asserting `"doctor" in output` instead. Also reflowed two brief lines that exceeded the 100-char limit (ruff E501) with identical behavior. `doctor --dev` ran cleanly (exit 1 due to real FAIL on missing `.env` in this checkout — expected, not a crash).
+- Report: `/home/briney/git/fold-at-scripps/.superpowers/sdd/task-10-report.md`</result>
+<usage><subagent_tokens>53606</subagent_tokens><tool_uses>35</tool_uses><duration_ms>224573</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a0aa0a8a96cf77976</task-id>
+<tool-use-id>toolu_01DeeDD8WF3NcaDUVZhkCdHD</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a0aa0a8a96cf77976.output</output-file>
+<status>completed</status>
+<summary>Agent "Review Task 10 (spec + quality)" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Matches the diff file exactly. Everything checks out. Now producing the final report.
+
+## Spec-compliance verdict: ✅
+
+The implementation matches the brief precisely, with only trivial, justified reformatting (line-length fixes) and one reasonable, disclosed test-assertion change.
+
+## Strengths
+
+- `cli.py` fully replaced; `@app.callback` is gone with no leftover references anywhere in the tree (confirmed via `grep -rn "_cli_callback\|app.callback" src/ tests/` — the only hit is the unrelated top-level `src/fold_at_scripps/cli.py`).
+- All six commands present and correctly wired: `doctor`, `version`, `config init`, `config show` (via `config_app.command(...)`), `serve`, `scheduler`. `config_app` is created and mounted with `app.add_typer(config_app, name="config")` (`src/fold_at_scripps/foldapp/cli.py:13-14` in diff, i.e. lines 28-30 of the new file).
+- Module-reference imports used correctly: `from fold_at_scripps.foldapp import context, envfile, preflight`, and all call sites are module-qualified (`context.resolve_paths()`, `preflight.run_checks(...)`, `preflight.has_failures(...)`, `envfile.scaffold_env(...)`, `envfile.redact_settings(...)`). Verified this is required and sufficient for the tests' `monkeypatch.setattr(preflight, "run_checks", ...)` and `monkeypatch.setattr(context, "resolve_paths", ...)` patterns to take effect — confirmed by actually running `test_help_lists_command_group`, which passed.
+- Lazy imports verified empirically, not just by inspection: `uv run python -c "import fold_at_scripps.foldapp.cli; ..."` shows none of `fastapi`, `sqlalchemy`, `asyncpg`, `uvicorn` land in `sys.modules` after import. `get_settings` (in `config_show`), `run.serve`/`run.scheduler` (in `serve`/`scheduler`), and `importlib.metadata.version`/`shell.run` (in `version`) are all imported inside function bodies as required.
+- `doctor` builds a `rich.table.Table("Check", "Status", "Detail", "Fix")`, populates rows with a status-colored cell, and raises `typer.Exit(code=1)` iff `preflight.has_failures(results)` — matches brief exactly.
+- Cross-checked every downstream interface actually used by the new `cli.py` against its real implementation (not just the brief's assumed signatures): `preflight.run_checks(paths, *, context="deploy")`, `preflight.has_failures(results)`, `context.resolve_paths(...)` (all-keyword, all-optional), `shell.run(...)` returns an object with `.stdout`, `envfile.scaffold_env(paths) -&gt; bool`, `envfile.redact_settings(mapping) -&gt; dict`, `run.serve(host=..., port=...)`, `run.scheduler()`. All match the call sites in the new `cli.py` with correct argument names/types. `Status` is a `StrEnum`, so `_STATUS_STYLE[r.status]` dict lookup works correctly (verified interactively).
+- The `test_help_lists_command_group` change (`"foldapp" in output` → `"doctor" in output`) is reasonable: it's a direct, unavoidable consequence of the brief's own verbatim help-string change (which drops the `"foldapp: "` prefix), it was disclosed prominently in the report, and the new assertion still verifies the original intent — that `--help` lists a real registered command. Ran the test standalone; it passes for the right reason (Typer's help output legitimately lists `doctor` in the `Commands:` section).
+- Diff is minimal and scoped: `git diff --stat` confirms only the two expected files changed, matching the review diff exactly.
+- Ruff check + format independently re-run on just the two changed files: clean.
+
+## Issues
+
+None found at Critical or Important severity.
+
+Minor:
+- `src/fold_at_scripps/foldapp/cli.py` (`version` command): if `paths.app_dir` is not a git repository (e.g., a fresh install before `git clone`, or a tarball deploy), `shell.run(["git", "rev-parse", ...], check=False)` will return a non-zero exit with empty `stdout`, and the code correctly falls back to `"unknown"` — this is handled properly, not a bug, noting only because it's the one path with external-process dependency inside a command that's otherwise well-covered by `test_version_smoke`. No fix needed.
+- The report's two disclosed "whitespace-only" reformats (splitting `version()`'s `run(...)` call and switching `config_init()`'s message to `if/else`) are purely cosmetic and behavior-preserving — confirmed by reading the diff; not a concern.
+
+## Task quality: Approved
+
+Spec compliance is exact where it matters (command set, sub-app wiring, module-reference imports for monkeypatching, lazy imports, doctor's table + exit code), and the one deviation from the brief's literal text (the pre-existing help-text assertion) is disclosed, narrowly scoped, and verified to still test something real. All interface assumptions in the new `cli.py` were cross-checked against the actual implementations of `preflight`, `context`, `envfile`, `shell`, and `run` rather than trusting the brief's snippet blindly, and all matched. Ruff and the targeted test were independently re-verified rather than taken on faith from the report.</result>
+<usage><subagent_tokens>42401</subagent_tokens><tool_uses>22</tool_uses><duration_ms>86214</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a2f57d2dad88bc498</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a2f57d2dad88bc498.output</output-file>
+<status>completed</status>
+<summary>Agent "Implement Task 11: install/deploy" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Status: DONE
+Commits created: 7a8d8c0 feat(foldapp): install + deploy orchestration (branch `feature/foldapp-cli`)
+Test summary: 214 passed (full suite); ruff check + format clean
+Concerns: Brief's literal second test used `assert False` in a `try/except`, which violates this repo's enabled B011 ruff rule (no per-file test ignore exists); rewrote to equivalent `pytest.raises(RuntimeError, match="(?i)postgres")` to satisfy the "ruff clean" global constraint while preserving identical test semantics — documented in report.
+Report: `/home/briney/git/fold-at-scripps/.superpowers/sdd/task-11-report.md`</result>
+<usage><subagent_tokens>53977</subagent_tokens><tool_uses>35</tool_uses><duration_ms>220127</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>aff281409d81b4741</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/aff281409d81b4741.output</output-file>
+<status>completed</status>
+<summary>Agent "Review Task 11 (spec + quality)" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>This confirms `dry_run` on `systemctl(...)` and other steps short-circuits at the `run()` level cleanly — no side effects, and `wait_ready` under `dry_run=True` returns `True` immediately (line in postgres.py: `if dry_run: return True`), so the RuntimeError path can't spuriously trigger during a dry run. This is consistent and correct.
+
+Everything checks out. Now composing the final review.
+
+---
+
+## Spec-compliance verdict: ✅ Compliant
+
+## Strengths
+
+- **Exact converge order** matches the brief precisely: `postgres.compose_up` → `postgres.wait_ready` (raise if `False`) → `frontend.migrate` → `frontend.build_frontend` → `units.install_units` → `service.systemctl("enable","all")` → `service.systemctl("restart","all")`. Verified against `install.py:84-91`.
+- **Module-reference imports** (`install.py:71`: `from fold_at_scripps.foldapp import envfile, frontend, postgres, preflight, service, units`) exactly as required, and every call site is module-qualified (`postgres.compose_up(...)`, `frontend.migrate(...)`, etc.), which is what makes `mock.patch.object(install_mod.postgres, "compose_up")` work in the tests.
+- **`dry_run` threading** is complete and verified against real signatures: `postgres.compose_up`, `postgres.wait_ready`, `frontend.migrate`, `frontend.build_frontend`, `units.install_units`, and `service.systemctl` all accept and honor `dry_run` (checked each module's source — signatures match call sites exactly, no keyword mismatches). Under `dry_run=True`, `postgres.wait_ready` short-circuits to `True` (`postgres.py:33-34`), so the RuntimeError path is correctly unreachable during a dry run — no spurious failures.
+- **`first_run` gating** is correct: dir creation (`data_dir`, `backups_dir`, `deploy_state_file.parent`) + `envfile.scaffold_env` happen only inside `if first_run:` before the converge steps, and the linger check + "next steps" message happen only inside a second `if first_run:` after units are enabled/restarted — matching the brief's ordering intent exactly.
+- **RuntimeError message contains "postgres"** (`"postgres did not become ready in time"`), satisfying the `assert "postgres" in str(exc).lower()` check.
+- **CLI wiring** is additive only: one new import line, two new `@app.command()` functions appended before `main()`. No callback added, no rewrite of existing commands. `install` runs `preflight.run_checks` → `has_failures` → print + `typer.Exit(code=1)` before ever calling `deploy(first_run=True)`; `deploy` command just calls `deploy()` with no `first_run`. Both match the brief's literal CLI code.
+- **The `assert False` → `pytest.raises` rewrite is legitimate and equivalent.** `pytest.raises(RuntimeError, match="(?i)postgres")` verifies exactly the same two facts as the original try/except (a `RuntimeError` is raised, and its message contains "postgres" case-insensitively). The `match` regex `(?i)postgres` is a correct case-insensitive substring match via `re.search`. Ruff B011 is real (`assert False` in a bare `except` block) and there's no per-file-ignore for tests in `pyproject.toml` (confirmed: `select = ["E","F","I","UP","B"]`, only `migrations/versions/*` has an ignore, and only for E501). The rewrite also matches this codebase's existing idiom (`pytest.raises` used elsewhere). This is a legitimate, non-downgrading fix.
+- Directory creation uses `mkdir(parents=True, exist_ok=True)` (`install.py:80`) — idempotent, safe to call on every `first_run` deploy.
+- `enable` then `restart` (not `restart` then `enable`) matches systemd best practice and the brief's literal order; no double-restart — each systemctl call is invoked exactly once per action.
+
+## Issues
+
+None rise to Critical or Important. One Minor observation:
+
+- **Minor**: `tests/foldapp/test_cli.py` was not extended with CLI-level tests for the new `install`/`deploy` commands (e.g., verifying `install` exits 1 on preflight failure via the Typer `CliRunner`, or that `deploy` calls `install_mod.deploy` without `first_run`). The brief's Step 5 only instructs re-running the existing `test_cli.py` (to confirm the append didn't break anything) and doesn't explicitly mandate new CLI tests — so this isn't a spec violation, but it is a coverage gap: the `install` command's preflight-gate-then-exit-1 branch and the `deploy` command's thin wrapper are currently exercised only by manual/self-review (per the report), not by an automated test. `src/fold_at_scripps/foldapp/cli.py:49-63`.
+
+## Task quality: Approved
+
+All brief-mandated behavior — step order, `first_run` gating, `dry_run` threading, RuntimeError semantics, module-reference imports, and additive CLI wiring — is implemented exactly as specified and verified directly against the real signatures of `postgres`, `frontend`, `units`, `service`, `envfile`, and `preflight`. The one test-rewrite deviation is well-justified, non-behavior-changing, and consistent with the project's ruff constraints and existing test idiom. The only gap (no new CLI-level tests for `install`/`deploy`) is a minor coverage nit, not a correctness or spec issue, and doesn't block approval.</result>
+<usage><subagent_tokens>42312</subagent_tokens><tool_uses>13</tool_uses><duration_ms>48921</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a3b70e3c816967a9a</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a3b70e3c816967a9a.output</output-file>
+<status>completed</status>
+<summary>Agent "Implement Task 12: ops commands" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>- Status: DONE
+- Commits created: `2085a03` feat(foldapp): status, start/stop/restart, logs
+- Test summary: 216/216 passed (full suite); ruff check + format clean repo-wide
+- Concerns: none — 3 mechanical deviations from brief's literal snippets (rename unused loop var `kind`→`_kind`, split one E501 line in `status()`, wrap one E501 line in test) purely to satisfy this repo's ruff config; no behavior change
+- Report: `/home/briney/git/fold-at-scripps/.superpowers/sdd/task-12-report.md`</result>
+<usage><subagent_tokens>45379</subagent_tokens><tool_uses>24</tool_uses><duration_ms>151801</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a0888351d9b714c6c</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a0888351d9b714c6c.output</output-file>
+<status>completed</status>
+<summary>Agent "Review Task 12 (spec + quality)" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>I have all three documents. Let me verify the key claims against the diff directly.
+
+**Verifying exactly one callback:**
+
+The diff shows exactly one `@app.callback(invoke_without_command=True)` block (lines 103-107 of the diff), decorating `_default`, which checks `if ctx.invoked_subcommand is None: status()`. No other `@app.callback` appears anywhere in the diff. Since the diff is the full delta from base to head, and the base (per Task 10 report referenced in the prompt) left no callback, this confirms exactly one exists post-change.
+
+**Verifying `status`:**
+
+- Iterates `service.UNIT_NAMES.items()` (module-qualified `service.` prefix — line 67 of diff) — good, monkeypatching `service.is_active` will take effect since it's called as `service.is_active(unit)`, not a bare imported name.
+- Calls `_api_healthy()` (module-local, matches test's `mock.patch("fold_at_scripps.foldapp.cli._api_healthy", ...)`).
+- Uses `run(...)` for git ref — imported locally from `fold_at_scripps.foldapp.shell` inside the function body (line 63 of diff: `from fold_at_scripps.foldapp.shell import run`). This matches brief's `shell.run` interface requirement, just imported as a bare name rather than qualified. Since it's imported once inside the function and used once, no monkeypatch concern was specified in the brief for this call (the brief's own test doesn't monkeypatch `run`/`shell.run` for `status`), so this is fine.
+
+**Verifying `_api_healthy`:**
+
+Lines 48-57 of diff: uses `urllib.request.urlopen`, catches `(urllib.error.URLError, OSError)`, returns `False`. Matches spec exactly — no exception escapes.
+
+**Verifying start/stop/restart/logs:**
+
+- `start`/`stop`/`restart` each call `service.systemctl(action, target)` with correct literal action strings ("start"/"stop"/"restart") — matches.
+- `logs` calls `service.journal(target, follow=follow)` — matches.
+
+**Verifying callback guard:**
+
+`_default` only calls `status()` when `ctx.invoked_subcommand is None` — confirmed at diff lines 105-107. When a subcommand is invoked (e.g., `doctor`), `invoked_subcommand` is non-None, so `status()` is skipped and the subcommand proceeds normally.
+
+**Checking test quality:**
+
+Both tests in `test_ops.py` use `monkeypatch`/`mock.patch` on `service.is_active`, `cli._api_healthy`, and `service.systemctl` — testing real behavior through the CLI runner rather than calling internals directly. No `assert False` / B011 patterns present. Assertions check `exit_code == 0` and meaningful output/call content, not vacuous checks.
+
+**Checking reported deviations:**
+
+1. `_kind` rename (diff line 67) — cosmetic, unused-var fix, no behavior change. Confirmed in diff.
+2. `ref` line split into `result = run(...)` / `result.stdout.strip()` (diff lines 71-72) — confirmed, purely a line-length split, same call semantics (`cwd=paths.app_dir, check=False`).
+3. Test line wrap in `test_ops.py` (diff lines 148-150) — confirmed, same call semantics.
+
+All three deviations are mechanical formatting/naming only; none change behavior or spec compliance.
+
+One minor observation: `status()` calls `context.resolve_paths()` to get `paths.app_dir` for the git-ref call — this isn't mentioned explicitly in the brief's interface list ("Consumes: `service`, `context`, `shell.run`") but `context` is listed as a consumed interface, so this is consistent, not an addition of scope.
+
+---
+
+## Spec-compliance verdict: ✅
+
+## Strengths
+
+- Exactly one `@app.callback(invoke_without_command=True)` exists (`_default`, cli.py diff lines 103-107), correctly guarded on `ctx.invoked_subcommand is None`, so subcommands like `doctor` are unaffected and don't trigger a spurious `status()` call.
+- `status` iterates `service.UNIT_NAMES.items()` and calls `service.is_active(unit)` fully module-qualified (`src/fold_at_scripps/foldapp/cli.py` diff line 67-68), so the brief's test-style `monkeypatch.setattr(service, "is_active", ...)` takes effect correctly — no bare-name import that would break monkeypatching.
+- `_api_healthy` (diff lines 48-57) uses stdlib `urllib.request` only, and catches exactly `(urllib.error.URLError, OSError)`, returning `False` — no exception can escape, matching the spec precisely.
+- `start`/`stop`/`restart`/`logs` are all thin, correct wrappers over `service.systemctl(action, target)` / `service.journal(target, follow=follow)` with matching literal action strings.
+- Reported deviations (unused-var rename, two line-length splits) are verified in the diff to be purely mechanical — no behavioral drift introduced by lint fixes.
+- New tests patch collaborators at the correct module boundary (`service.is_active`, `cli._api_healthy`, `service.systemctl`) and assert on real CLI behavior (exit code + output/call content), not tautologies.
+
+## Issues
+
+None found. No second callback, no unguarded `status()` call on every subcommand, no swallowed/leaked exceptions in `_api_healthy`, no B011 (`assert False`) patterns, no line-length or import violations visible in the diff.
+
+## Task quality: Approved
+
+Reasoning: All brief-mandated interfaces (`_api_healthy`, `status`, `start`, `stop`, `restart`, `logs`, single callback with correct guard) are present and wired exactly as specified, verified directly against the diff text rather than the report's narrative. The three self-reported deviations are confirmed cosmetic/mechanical (lint-driven renames and line splits) with no behavioral impact. Tests exercise real CLI invocation paths with correctly-scoped monkeypatches, and no anti-pattern (vacuous assertions, bare `_kind` leaking into logic, double callback) is present in the diff.</result>
+<usage><subagent_tokens>31167</subagent_tokens><tool_uses>3</tool_uses><duration_ms>28359</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a8c25f7e9bd196efd</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a8c25f7e9bd196efd.output</output-file>
+<status>completed</status>
+<summary>Agent "Implement Task 13: upgrade/rollback" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>- Status: DONE
+- Commits created: `6e504a6` feat(foldapp): guarded upgrade, rollback, refresh, db dump/restore
+- Test summary: 218 passed (full suite), including the 2 new upgrade tests; ruff check + format clean
+- Concerns: `refresh()`'s shell-out `uv run foldapp catalog sync` (per brief verbatim) doesn't match the actual existing command name `sync-catalog` in the top-level CLI — not test-breaking (mocked), but will need reconciling before `refresh` is used for real; implemented as specified rather than deviating from the brief
+- Report: `/home/briney/git/fold-at-scripps/.superpowers/sdd/task-13-report.md`</result>
+<usage><subagent_tokens>65272</subagent_tokens><tool_uses>36</tool_uses><duration_ms>248916</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>ab358ed2bf853474d</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/ab358ed2bf853474d.output</output-file>
+<status>completed</status>
+<summary>Agent "Review Task 13 (spec + quality)" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>## Spec-compliance verdict: ✅ Compliant
+
+The implementation matches the brief verbatim, including the single most important correctness property (maintenance-ON on health-gate failure) and the module-reference import contract.
+
+## Strengths
+
+- **Failure posture is correct and provably so.** In `upgrade()` (`src/fold_at_scripps/foldapp/upgrade.py:99-104`) and `rollback()` (`upgrade.py:129-131`), the health-gate check is a flat `if not dry_run and not wait_healthy(): raise RuntimeError(...)` followed on the *next* line by `set_maintenance(False, ...)`. There is no `try/finally` or exception handler wrapping this section anywhere in `upgrade.py` (the only `try/finally` in the file is inside `set_maintenance`'s `_toggle()` coroutine, for engine disposal — unrelated). The raise is unconditionally fatal to the function; `set_maintenance(False)` is genuinely unreachable on failure. Traced statically and confirmed by the two new tests actually passing (`uv run pytest tests/foldapp/test_upgrade.py -v` → 2 passed).
+- Step order in `upgrade()` matches the brief exactly: record `old_ref` → `set_maintenance(True)` → `postgres.dump` → `_rotate_backups` (guarded by `not dry_run`) → `_git_pull` → `write_state` → `_uv_sync` → `frontend.build_frontend` → `frontend.migrate` → `service.systemctl("restart","all")` → `wait_healthy()` gate → `set_maintenance(False)`.
+- `_rotate_backups` (`upgrade.py:74-78`) correctly keeps the newest 5: filenames are timestamp-sortable (`%Y%m%dT%H%M%SZ`), so lexical `sorted()` == chronological order, and `snaps[:-keep]` is empty (not a wraparound bug) when `len(snaps) &lt;= keep` — verified numerically.
+- `rollback()` correctly reads state, raises `RuntimeError` when `st is None or st.prev_ref is None` (`upgrade.py:117-119`), restores DB only when both `restore_db` and `st.backup_path` are truthy, and has its own independent health-gate with the same unreachable-`set_maintenance(False)` posture on failure.
+- `upgrade.py` imports `frontend`, `postgres`, `service` as module references (`upgrade.py:13`) and calls everything module-qualified (`postgres.dump`, `frontend.build_frontend`, `frontend.migrate`, `service.systemctl`) — matches the test fixture's monkeypatch targets (`up.postgres.dump`, etc.) exactly, so the tests are patching the real call sites, not shadow objects.
+- CLI destructive-op confirmations: `rollback --db` (`cli.py:128`) and `db restore` (`cli.py:154`, not fully shown but present per diff) both gate on `typer.confirm(...)` and raise `typer.Abort()` unless `--yes`. `dry_run` is threaded through `upgrade`, `refresh`, `rollback`.
+- No `shell=True` anywhere in the diff (verified via grep); all shell-outs go through the existing `run()` list-args wrapper.
+- `set_maintenance`'s DB path (`upgrade.py:47-57`) disposes the engine in a `finally`, so cleanup happens even if `set_maintenance_mode` raises; `dry_run` short-circuits before touching the DB/asyncio stack at all.
+- Correctly did **not** flag `foldapp catalog sync` in `refresh()` as missing — confirmed by inspecting the pre-existing codebase: `fold_at_scripps.cli` (top-level) has `sync-catalog`, while `fold_at_scripps.foldapp.cli` (this task's tree) has no `catalog` sub-app yet — that's Task 15's job, out of scope here, exactly as the reviewer brief anticipated.
+- Line lengths ≤100 in all changed lines; `ruff check` and `ruff format --check` both pass clean on the two touched files.
+
+## Issues
+
+**Important — plan-mandated: `db dump` / `db restore` lack `--dry-run`.**
+`src/fold_at_scripps/foldapp/cli.py:133-136` (`db_dump`) and `cli.py:146-158` (`db_restore`) have no `--dry-run` option at all, despite both being mutating (dump writes a file to disk; restore destructively overwrites the database) and the global constraint stating "every mutating command `--dry-run`." This is not an implementer defect — the brief's own Step 4 code block (task-13-brief.md lines 238-265) omits `dry_run` from both signatures, and the implementer copied it verbatim (confirmed against the diff). Flagging as plan-mandated since the underlying `postgres.dump`/`postgres.restore` functions already support a `dry_run` kwarg (unused here) — the capability exists but isn't exposed at the CLI layer for these two subcommands.
+
+**Minor — no CLI-level test coverage for new commands.**
+`tests/foldapp/test_cli.py` is unmodified in this diff; there is no automated test exercising `upgrade`/`refresh`/`rollback`/`db dump`/`db restore` at the Typer/CliRunner level (e.g., confirming `--yes` bypass or abort-on-decline). The implementer's report claims this was manually verified via ad hoc `CliRunner` smoke tests, but that verification isn't captured in the committed test suite. Not required by the brief's Step 5 (which only re-runs existing `test_cli.py` plus the two new `test_upgrade.py` tests), so this doesn't block approval, but it's a gap for whoever later touches the confirm-bypass logic.
+
+**Minor — `refresh()` shell-out will fail at runtime today.**
+`upgrade.py:111` shells to `uv run foldapp catalog sync`, which doesn't exist yet (correctly out of scope per the reviewer brief, and honestly flagged by the implementer in their own report as a forward-reference risk). No action needed for this task; noting only so it isn't lost before Task 15 lands.
+
+## Task quality: Approved
+
+The crux requirement — maintenance-mode staying ON when `wait_healthy()` fails, in both `upgrade` and `rollback` — is correctly implemented and independently verified by tracing the control flow (no `finally`/exception-swallowing path exists that could reach `set_maintenance(False)` after the raise) and by running the two new tests, which pass and exercise real negative assertions (`(False,) not in calls`). Module-reference imports, backup rotation, state-based rollback gating, and destructive-op confirmations all match the brief. The one genuine gap (`db dump`/`db restore` missing `--dry-run`) is inherited directly from the brief's own Step 4 code, not introduced by the implementer, so it doesn't block this task's approval — it should be tracked as a plan-level follow-up rather than reworked here.</result>
+<usage><subagent_tokens>56234</subagent_tokens><tool_uses>21</tool_uses><duration_ms>110998</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a224889fd3771d799</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a224889fd3771d799.output</output-file>
+<status>completed</status>
+<summary>Agent "Fix Task 13: add --dry-run to db cmds" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Excellent! Let me create a final summary:
+
+---
+
+**Status:** DONE
+
+**Commit:** `e972ac5 fix(foldapp): add --dry-run to db dump/restore commands`
+
+**Test Summary:**
+- New tests: `test_db_dump_dry_run_passes_through` + `test_db_restore_dry_run_skips_confirm` ✓
+- Full suite: 220 passed ✓
+- Ruff: All checks passed ✓
+
+**Report file:** `/home/briney/git/fold-at-scripps/.superpowers/sdd/task-13-report.md`</result>
+<usage><subagent_tokens>37812</subagent_tokens><tool_uses>16</tool_uses><duration_ms>99197</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>ac028897783592c54</task-id>
+<tool-use-id>toolu_01X5BgmVwtahYANNXAfJeYCN</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/ac028897783592c54.output</output-file>
+<status>completed</status>
+<summary>Agent "Re-review Task 13 fix" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>`mock` is already imported at module level, so the new tests' use of `mock.Mock(...)` is valid without additional imports. Everything checks out — no need to run the suite myself; the evidence is consistent and the diff is small and self-verifying.
+
+## Verdict: ✅ Spec-compliant
+
+**The Important finding — `db dump`/`db restore` missing `--dry-run` — is RESOLVED.**
+
+Both commands now declare `dry_run: bool = typer.Option(False, "--dry-run")` and thread it through: `db_dump` → `postgres.dump(paths, dest, dry_run=dry_run)` (cli.py line ~37), `db_restore` → `postgres.restore(context.resolve_paths(), Path(path), dry_run=dry_run)` (line ~57). The underlying `postgres.dump`/`postgres.restore` (src/fold_at_scripps/foldapp/postgres.py:61,76) already correctly short-circuit before any docker/subprocess call when `dry_run=True` — confirmed by reading the (unchanged) function bodies, so the flag is not just accepted but genuinely non-mutating end-to-end.
+
+## Strengths
+
+- `db_restore`'s confirm gate is precisely restructured: `if not dry_run and not yes and not typer.confirm(msg): raise typer.Abort()` — dry-run skips the prompt entirely, while the `--yes` bypass for a real (non-dry-run) restore is preserved unchanged in logic.
+- Both new tests assert real, falsifiable behavior via `CliRunner` + mocked `postgres.dump`/`postgres.restore`, checking `call_args.kwargs["dry_run"] is True` — not just exit codes. No `assert False` / B011 pattern.
+- Minimal, surgical diff: only the two command signatures and call sites changed; no unrelated code touched. `upgrade.py`'s failure posture is untouched, as expected.
+- `mock` is already imported at the top of `tests/foldapp/test_upgrade.py`, so the new tests need no additional import — clean reuse of existing test-file scaffolding.
+- Reported evidence is consistent internally: 220 full-suite passed, ruff check + format clean, and the isolated 4-test run for `test_upgrade.py` (including the two new tests) passes.
+
+## Issues
+
+None found. The diff is small, targeted, and both verification points (dry_run threading, confirm gating) are directly visible and correct in the 15-line functional diff.
+
+## Task quality: Approved
+
+The fix directly and correctly resolves the single Important finding from the prior review — `--dry-run` is now wired through both `db dump` and `db restore`, the destructive confirm is properly gated, and the two new tests exercise real pass-through/skip behavior rather than being placebo assertions.</result>
+<usage><subagent_tokens>29512</subagent_tokens><tool_uses>5</tool_uses><duration_ms>38463</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>ad54260122090ee6a</task-id>
+<tool-use-id>toolu_01TbLodTCL33EAh2vwny6Ezw</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/ad54260122090ee6a.output</output-file>
+<status>completed</status>
+<summary>Agent "Implement Task 14: dev up + uninstall" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Status: DONE
+
+Commits created: `2486f9e` feat(foldapp): dev up + uninstall
+
+Test summary: RED confirmed (exit code 2 for missing `uninstall`; `AttributeError` for missing `_run_dev_processes`) → implemented per brief verbatim → GREEN (2/2 new tests pass); full suite 222 passed; ruff check + format clean.
+
+Concerns: None. Commit landed on branch `feature/foldapp-cli` (this session's active branch with Tasks 1–13 history), not `feature/deployment-packaging` from the initial env snapshot — expected, not an issue.
+
+Report: `/home/briney/git/fold-at-scripps/.superpowers/sdd/task-14-report.md`</result>
+<usage><subagent_tokens>51702</subagent_tokens><tool_uses>22</tool_uses><duration_ms>136826</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a70d0ea11cb5dc960</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a70d0ea11cb5dc960.output</output-file>
+<status>completed</status>
+<summary>Agent "Review Task 14 (spec + quality)" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>No matches — confirms no `shell=True` and no `assert False` anywhere in the diff.
+
+---
+
+# Task 14 Review: `dev up` + `uninstall`
+
+**Spec compliance: ✅**
+
+## Strengths
+
+- `dev_up()` (diff lines 50–60) calls `postgres.compose_up(paths)` then `postgres.wait_ready(paths)`, both module-qualified via a local `from fold_at_scripps.foldapp import postgres` import — matches the brief exactly. `wait_ready` returns `bool`; when it returns `False`, `raise typer.Exit(code=1)` fires — correct non-zero exit on not-ready. Confirmed against the real `postgres.py` signatures, not just the test's stub behavior.
+- `service.systemctl("stop", "all")` / `service.systemctl("disable", "all")` (diff lines 74–75) are module-qualified (`service` already imported at file top, pre-existing). Verified against `service.py`: target `"all"` resolves internally to both `fold-api` and `fold-scheduler` units, so each single call covers both units in one shot — no missing iteration bug.
+- Unit files unlinked with `missing_ok=True` (diff lines 76–77) — safe even if units were never installed.
+- `daemon-reload` runs via `shell.run(...)`-equivalent (`run(["systemctl", "--user", "daemon-reload"], check=False)`, diff line 80) — non-fatal, list-args, no shell.
+- `--purge` deletes `paths.state_dir` only inside its own gate (diff line 81), with its own `yes or typer.confirm(...)` check — a distinct second confirmation for the destructive purge step, on top of the top-level stop/disable confirmation. Satisfies "confirm gating with `--yes` bypass" for both the base uninstall and the purge step.
+- `_run_dev_processes` (diff lines 31–47) uses `subprocess.Popen` with list args only for both children (uvicorn and `npm run dev`); no `shell=True` anywhere in the diff (grep confirms zero occurrences repo-wide in this diff). `KeyboardInterrupt` is caught and both children are `.terminate()`d.
+- Exactly one `@app.callback` in the file — the pre-existing `_default` (diff context lines 20–24, unchanged). Grep of the diff confirms no `+@app.callback` line was added.
+- Pure append: diff stat is 59 insertions / 0 deletions in cli.py — no rewrite.
+- Both new tests exercise real behavior through `runner.invoke(app, ...)`: `test_uninstall_disables_units` asserts the unit files are actually gone from the filesystem (real side effect) and monkeypatches `service.systemctl` at the exact module attribute the implementation calls (verified via the fork's read of `service.py` and `cli.py`'s import structure) — not a hollow mock.
+- Collaborator module signatures (`postgres.compose_up`, `postgres.wait_ready`, `service.systemctl`, `context.resolve_paths`, `shell.run`) were independently verified against the real source files, not just the diff/report — all call sites in the new code match real signatures with no mismatches. `context.resolve_paths()` accepts zero args (all defaults), so the no-arg calls in `dev_up`/`uninstall` are valid.
+
+## Issues
+
+**Minor — `_run_dev_processes(paths)` parameter is untyped (diff line 31).** Global constraints require type hints on all function signatures. The brief's own snippet was untyped too — this is a plan-mandated defect, not an implementer deviation, but it does technically violate the stated global constraint. Low impact since `paths` is used only for attribute access (`.app_dir`), and the file has no existing `Paths` type imported for annotation reuse.
+
+**Minor, plan-mandated risk — `uninstall`'s `systemctl("stop", "all")` call is unconditional and not `check=False`.** If a user runs `uninstall` when the units were never installed/started (e.g., after a failed partial `install`), the underlying `shell.run`/`systemctl` call could raise on a non-existent unit (default `check=True` semantics in `shell.run`), aborting before unit files get unlinked. This exact call shape is copied verbatim from the brief's Step 3 code, so it's inherited from the plan rather than introduced by the implementer, and isn't exercised by the test suite (test pre-creates unit files and fully mocks `service.systemctl`, never hitting a live failure path). Flagged as unverified real-world robustness gap, not a fabricated defect — genuinely present in the shipped code, just not implementer-introduced.
+
+No Important or Critical issues: no `shell=True`, no missing confirm/`--yes` gating, no second `@app.callback`, no rewrite, no `assert False`/B011 violations, ruff-clean per the report (and my own grep of the diff corroborates no forbidden patterns).
+
+## Task quality: Approved
+
+The implementation matches the brief verbatim; every module-qualified collaborator call was checked against the real function signatures (not just the report's claims) and resolves correctly; the single-callback and no-rewrite hard constraints hold; subprocess usage is list-args-only with proper `KeyboardInterrupt` cleanup; and both new tests verify genuine behavior (real file deletion, real CLI invocation, correctly-scoped monkeypatches) rather than trivially-mocked assertions. The two Minor issues are both inherited verbatim from the brief's specified implementation and don't block approval of this task-scoped gate — they're worth a note for whoever writes a future hardening pass (e.g., a follow-up task making `systemctl` calls in `uninstall` tolerant of missing units), but are out of scope for this task as specified.</result>
+<usage><subagent_tokens>42018</subagent_tokens><tool_uses>16</tool_uses><duration_ms>100757</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>ae18b7b599830978f</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/ae18b7b599830978f.output</output-file>
+<status>completed</status>
+<summary>Agent "Implement Task 15: admin/catalog + cleanup" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Status: DONE
+Commits created: `45518f6` — feat(foldapp): fold admin/catalog in; remove fold-admin/fold-scheduler scripts
+Test summary: `tests/test_cli.py` (3 integration tests) RAN (not skipped — Postgres + autobio both available) and passed; `tests/foldapp` (51, incl. new `test_admin_and_catalog_help`) passed; full suite 223 passed; ruff check + format clean.
+Concerns: `deploy/fold-scheduler.service` still references the removed `fold-scheduler` console script — out of scope (Task 16/17), flagged in report for downstream visibility.
+Report: `/home/briney/git/fold-at-scripps/.superpowers/sdd/task-15-report.md`</result>
+<usage><subagent_tokens>63325</subagent_tokens><tool_uses>29</tool_uses><duration_ms>235090</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a4e514eec8c4f77f4</task-id>
+<tool-use-id>toolu_01SwDDypYnhrAiy1bfddaLp1</tool-use-id>
+<output-file>/tmp/claude-1001/-home-briney-git-fold-at-scripps/81efea97-4441-45df-9723-649c2ecd0b06/tasks/a4e514eec8c4f77f4.output</output-file>
+<status>completed</status>
+<summary>Agent "Review Task 15 (spec + quality)" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>All checks confirm the implementer's claims: no stragglers, `console`/`app` are pre-existing module-level symbols, exactly one `@app.callback`, and `pyproject.toml` has only `foldapp`. Now let me verify a couple of subtle behavior points against the old CLI: error message format (`typer.echo(..., err=True)` vs `console.print`) and whether `raise typer.Exit(code=1)` happens before or after any partial commit — and check that `session.commit()` isn't accidentally reached in the duplicate-user path.
+
+Looking at the diff closely: in the new `admin_create_admin`, the duplicate-check raises `typer.Exit(code=1)` inside the `async with get_sessionmaker()() as session:` block, before any `session.add`/`commit` — same structure as the old code. This matches.
+
+I now have everything needed for the report.
+
+---
+
+## Spec-compliance verdict: ✅
+
+The implementation faithfully ports the old `fold-admin` logic into `foldapp`'s `admin`/`catalog` sub-apps, deletes the old module, migrates `tests/test_cli.py`, and leaves no functional stragglers. One minor deviation (output channel) and one cosmetic deviation (line reflow) exist but don't change behavior.
+
+## Strengths
+
+- **Append-only edit confirmed**: `src/fold_at_scripps/foldapp/cli.py:117-183` (diff) is inserted between the existing `uninstall` command and `main()`; the pre-existing single `@app.callback(invoke_without_command=True)` at line 219 remains the only callback (verified via grep — one hit).
+- **Lazy imports honored**: both `admin_create_admin` (diff lines 130-136) and `catalog_sync` (diff lines 169-173) import `asyncio`, `sqlalchemy`, `hash_password`, `dispose_engine`/`get_sessionmaker`, ORM models, `AutobioToolSource`, `sync_catalog` inside the function body — nothing added to the module-level import block, so `foldapp --help`/`doctor` stay light as required.
+- **Logic ports faithfully**: duplicate-user check → error + `typer.Exit(code=1)` before any mutation; email allowlisted only if not already present; `User` created with `ADMIN`/`ACTIVE` and `hash_password(password)`; `session.commit()` called; `dispose_engine()` called in a `finally` block in both commands — matches the deleted `src/fold_at_scripps/cli.py` (diff lines 43-92) semantics exactly.
+- **`catalog sync` matches**: calls `sync_catalog(session, AutobioToolSource())` and reports `f"{result.added} added, {result.updated} updated"` — same field names/semantics as the old `_sync_catalog`.
+- **Deletion confirmed**: `src/fold_at_scripps/cli.py` removed in full (82 lines, diff lines 14-101), including its own `app`, `@app.callback()`, and console-script `main()` — no risk of two competing Typer apps.
+- **Test migration correct**: `tests/test_cli.py` import changed to `from fold_at_scripps.foldapp.cli import app` (diff line 230); invocation args updated to `["admin", "create-admin", ...]` and `["catalog", "sync"]` (diff lines ~243, ~266, ~283); `pytestmark = pytest.mark.integration`, `db_session` fixture usage, and the `shutil.which("autobio")` skip on the catalog test are all preserved unchanged.
+- **New unit test added**: `tests/foldapp/test_cli.py::test_admin_and_catalog_help` (diff lines 210-213) matches the brief's Step 1 verbatim.
+- **Straggler grep is clean**: my own `grep -rn "fold_at_scripps\.cli\b\|fold-admin" src tests` returned no hits — the only prior reference (`tests/test_cli.py`'s old import) is gone. `pyproject.toml [project.scripts]` contains only `foldapp = "fold_at_scripps.foldapp.cli:main"`.
+- `console` and `app` used in the new commands are pre-existing module-level symbols in `foldapp/cli.py` (`Console()` at line 18, `app = typer.Typer(...)` at line 13) — no missing-import risk.
+
+## Issues
+
+**Minor — user-facing error/success messages changed channel and wording** (`src/fold_at_scripps/foldapp/cli.py` diff lines 142, 159, 179 vs. deleted `src/fold_at_scripps/cli.py` diff lines 48, 63, 84).
+Old CLI used `typer.echo(..., err=True)` for the duplicate-user error and plain `typer.echo(...)` for success/sync messages. New code uses `console.print("[red]error[/] ...")` / `console.print("[green]created admin[/] ...")` (stdout, Rich-styled, no `err=True`). This is a reasonable and arguably better choice for consistency with the rest of `foldapp/cli.py` (which uses `console` throughout, e.g. `uninstall`'s `console.print("[green]uninstalled[/]")`), and the brief's own Step 3 snippet explicitly specifies this `console.print` wording — so this is plan-mandated, not an implementer deviation. Not a defect, but worth noting the error message no longer goes to stderr, which could matter if anything scripts against stderr for this CLI. No evidence anything does.
+
+**Minor — line-length reflow deviates from brief's literal snippet** (`src/fold_at_scripps/foldapp/cli.py` diff lines 144-147).
+Brief specified a single-line `if not await session.scalar(select(AllowedEmail).where(AllowedEmail.email == email)):` (101 chars, over the 100-char limit). Implementer split it into `allowed = await session.scalar(...)` then `if not allowed:`. Functionally identical, correctly resolves a real ruff/line-length violation the brief's snippet would have introduced. Correct call, not a defect.
+
+**⚠️ Unverifiable without running tests — behavioral correctness of async session/engine handling under `CliRunner.invoke`.**
+I did not re-run the integration tests (per instructions). The implementer's report claims `tests/test_cli.py` (3 tests) passed against real Postgres + autobio. The diff shows `asyncio.run(_create())` / `asyncio.run(_sync())` called from a synchronous Typer command body invoked via `asyncio.to_thread(runner.invoke, ...)` in the test — same pattern as the old code, so no structural regression is visible in the diff. I did not independently re-execute this; flagging as unverified-but-plausible, consistent with the no-rerun instruction.
+
+## Risk noted (grep, as permitted)
+
+`grep -rn "fold_at_scripps\.cli\b\|fold-admin" src tests` returned **zero hits** — confirms no stragglers in `src/`/`tests/`. (Report's broader grep also caught `fold-scheduler` unit-name string hits in `units.py`, `context.py`, `service.py`, `scheduler/main.py`, and test assertions — these are systemd unit-name strings, not the removed console script, correctly identified as non-issues by the implementer and out of scope for this task.)
+
+## Task quality: Approved
+
+The diff is append-only to `cli.py` as required, contains exactly one `@app.callback`, faithfully ports `create-admin`/`sync-catalog` logic (error handling, allowlisting, commit, `dispose_engine` in `finally`) into `admin create-admin`/`catalog sync` with lazy imports, deletes the old module cleanly, and migrates `tests/test_cli.py`'s import/args while preserving its integration marker, fixture, and skip condition. The two deviations found (message channel/styling, line reflow) are both improvements or brief-mandated and don't affect correctness. No Important or Critical issues identified.</result>
+<usage><subagent_tokens>35496</subagent_tokens><tool_uses>7</tool_uses><duration_ms>43654</duration_ms></usage>
+</task-notification>
