@@ -1,0 +1,67 @@
+{
+  "description": "Input schema for inverse folding tools (e.g., ProteinMPNN, ESM-IF1).",
+  "properties": {
+    "extra": {
+      "additionalProperties": true,
+      "description": "Tool-specific parameters passed through to the container. Keys and values are forwarded as-is into config.json.",
+      "title": "Extra",
+      "type": "object"
+    },
+    "structure_path": {
+      "description": "Path to the input backbone structure (PDB or mmCIF).",
+      "format": "path",
+      "title": "Structure Path",
+      "type": "string"
+    },
+    "chains_to_design": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Chain IDs to redesign. None designs all chains.",
+      "title": "Chains To Design"
+    },
+    "num_sequences": {
+      "default": 1,
+      "description": "Number of designed sequences to generate.",
+      "title": "Num Sequences",
+      "type": "integer"
+    },
+    "temperature": {
+      "default": 0.1,
+      "description": "Sampling temperature. Lower values produce more conserved designs.",
+      "title": "Temperature",
+      "type": "number"
+    },
+    "fixed_positions": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Positions to keep fixed (not redesigned), as a mapping of chain ID to 1-based residue indices.",
+      "title": "Fixed Positions"
+    }
+  },
+  "required": ["structure_path"],
+  "title": "InverseFoldingInput",
+  "type": "object"
+}
