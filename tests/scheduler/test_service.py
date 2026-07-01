@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
+import logging
+from unittest.mock import AsyncMock
+
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -76,3 +80,24 @@ async def test_run_once_respects_maintenance_mode(tmp_path, db_session: AsyncSes
         .all()
     )
     assert running == []  # nothing claimed while in maintenance
+
+
+async def test_run_forever_survives_transient_error_then_stops_on_cancel(
+    tmp_path, db_session: AsyncSession, caplog: pytest.LogCaptureFixture
+) -> None:
+    """run_forever must swallow transient errors but propagate CancelledError."""
+    storage = LocalStorage(tmp_path)
+    scheduler = _scheduler(db_session, storage, GpuPool([0, 1]))
+    scheduler._poll_interval = 0
+
+    # First call raises a transient error; second call raises CancelledError to stop the loop.
+    scheduler.run_once = AsyncMock(  # type: ignore[method-assign]
+        side_effect=[RuntimeError("boom"), asyncio.CancelledError()]
+    )
+
+    with caplog.at_level(logging.ERROR, logger="fold_at_scripps.scheduler.service"):
+        with pytest.raises(asyncio.CancelledError):
+            await scheduler.run_forever()
+
+    assert scheduler.run_once.await_count == 2
+    assert any("Scheduler iteration failed" in r.message for r in caplog.records)

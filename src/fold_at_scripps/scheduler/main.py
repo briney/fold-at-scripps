@@ -14,7 +14,15 @@ from fold_at_scripps.storage import get_storage
 
 
 def build_scheduler() -> Scheduler:
-    """Construct a Scheduler from application settings and the real components."""
+    """Construct a Scheduler from application settings and the real components.
+
+    SINGLE-PROCESS INVARIANT: GPU allocation lives entirely in the per-process
+    in-memory GpuPool.  Two ``fold-scheduler`` processes running on the same node
+    would each believe all GPUs are free and could co-assign the same GPU to
+    concurrent runs.  Exactly one scheduler process must run per node.  Enforcing
+    this guarantee (e.g. via an advisory lock or leader election) is deferred to
+    the deployment plan.
+    """
     settings = get_settings()
     pool = GpuPool(list(range(settings.gpu_count)))
     return Scheduler(
@@ -27,7 +35,10 @@ def build_scheduler() -> Scheduler:
 
 
 async def run_scheduler() -> None:
-    """Recover orphaned runs, then poll forever."""
+    """Recover orphaned runs, then poll forever.
+
+    See ``build_scheduler`` for the single-process GPU-owner invariant.
+    """
     async with get_sessionmaker()() as session:
         await fail_orphaned_runs(session)
     await build_scheduler().run_forever()

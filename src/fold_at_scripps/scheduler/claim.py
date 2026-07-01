@@ -31,10 +31,17 @@ async def claim_runnable_run(session: AsyncSession, pool: GpuPool) -> tuple[Run,
         gpu_ids = pool.try_allocate(gpu_count)
         if gpu_ids is None:
             continue
-        run.status = RunStatus.RUNNING
-        run.assigned_gpu_ids = gpu_ids
-        run.started_at = datetime.datetime.now(datetime.UTC)
-        await session.commit()
-        await session.refresh(run)
+        try:
+            run.status = RunStatus.RUNNING
+            run.assigned_gpu_ids = gpu_ids
+            run.started_at = datetime.datetime.now(datetime.UTC)
+            await session.commit()
+            await session.refresh(run)
+        except Exception:
+            # Persisting the claim failed: return the GPUs so the pool does not
+            # leak, undo the in-flight transaction, and let the caller handle it.
+            pool.release(gpu_ids)
+            await session.rollback()
+            raise
         return run, gpu_ids
     return None

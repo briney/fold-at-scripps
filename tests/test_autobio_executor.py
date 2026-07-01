@@ -77,6 +77,35 @@ def test_timeout_returns_failure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     assert result.gpu_seconds is not None  # wall x 1 gpu
 
 
+def test_success_moves_multiple_outputs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """All entries in workspace/outputs/ must move to outputs_dir even with multiple items."""
+    request = _request(tmp_path, [])
+
+    def _fake_run(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        # Create multiple entries in workspace/outputs/: two files and a subdirectory.
+        workspace = Path(cmd[cmd.index("--output-dir") + 1])
+        outputs = workspace / "outputs"
+        outputs.mkdir(parents=True)
+        (outputs / "file_a.txt").write_text("a")
+        (outputs / "file_b.txt").write_text("b")
+        subdir = outputs / "subdir"
+        subdir.mkdir()
+        (subdir / "nested.npy").write_text("nested")
+        return subprocess.CompletedProcess(cmd, returncode=0, stdout="{}", stderr="")
+
+    monkeypatch.setattr(subprocess, "run", _fake_run)
+    result = AutobioExecutor().execute(request)
+
+    assert result.succeeded is True
+    # All entries must be present in outputs_dir.
+    assert (request.outputs_dir / "file_a.txt").read_text() == "a"
+    assert (request.outputs_dir / "file_b.txt").read_text() == "b"
+    assert (request.outputs_dir / "subdir" / "nested.npy").read_text() == "nested"
+    # No entries must remain in workspace outputs/.
+    workspace_outputs = request.outputs_dir.parent / "workspace" / "outputs"
+    assert list(workspace_outputs.iterdir()) == []
+
+
 @pytest.mark.skipif(shutil.which("autobio") is None, reason="autobio CLI not on PATH")
 def test_real_ablang2_smoke(tmp_path: Path) -> None:
     from fold_at_scripps.storage import LocalStorage

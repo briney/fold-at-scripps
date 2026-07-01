@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import datetime
+from unittest.mock import AsyncMock
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fold_at_scripps.models import Run, RunStatus, Tool, User
@@ -73,3 +75,32 @@ async def test_claim_returns_none_when_nothing_fits(db_session: AsyncSession) ->
 async def test_claim_returns_none_when_no_queued(db_session: AsyncSession) -> None:
     pool = GpuPool([0, 1])
     assert await claim_runnable_run(db_session, pool) is None
+
+
+async def test_claim_releases_gpus_when_commit_fails(
+    db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """GPU pool must not leak when the commit that persists a claim fails."""
+    user = await _user(db_session)
+    tool = await _tool(db_session, gpu_count=1)
+    await _queue(db_session, user, tool, when=1)
+
+    pool = GpuPool([0, 1])
+    original_available = pool.available
+
+    # Patch commit so it raises after GPUs have been tentatively allocated.
+    monkeypatch.setattr(db_session, "commit", AsyncMock(side_effect=RuntimeError("boom")))
+
+    with pytest.raises(RuntimeError, match="boom"):
+        await claim_runnable_run(db_session, pool)
+
+    # GPUs must be fully restored.
+    assert pool.available == original_available
+
+    # Roll back so we can re-query the run.
+    await db_session.rollback()
+
+    # The run must still be QUEUED (not left RUNNING).
+    run = (await db_session.execute(select(Run))).scalars().first()
+    assert run is not None
+    assert run.status is RunStatus.QUEUED

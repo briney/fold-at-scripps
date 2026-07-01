@@ -79,7 +79,16 @@ class Scheduler:
         self._reap()
 
     async def run_forever(self) -> None:
-        """Poll forever: schedule work, then sleep for the poll interval."""
+        """Poll forever: schedule work, then sleep for the poll interval.
+
+        A transient failure in one iteration is logged and the loop continues on
+        the next poll; only cancellation stops the daemon.
+        """
         while True:
-            await self.run_once()
+            try:
+                await self.run_once()
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                logger.exception("Scheduler iteration failed; continuing")
             await asyncio.sleep(self._poll_interval)
