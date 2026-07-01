@@ -1,32 +1,27 @@
-# React + TypeScript + Vite
+# fold@Scripps — Researcher SPA
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+The researcher-facing single-page app for fold@Scripps, built with Vite, React,
+and TypeScript. Researchers browse the available tools, fill out schema-driven
+submission forms, and track their runs.
 
-Currently, two official plugins are available:
+## Scripts
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+npm run dev       # start the Vite dev server (with HMR)
+npm run build     # type-check and produce a production build
+npm run lint      # run ESLint over the source
+npm test          # run the Vitest unit/component suite
+npm run test:e2e  # run the Playwright end-to-end tests
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## Backend
+
+During development, Vite proxies API requests to the FastAPI backend at
+`http://localhost:8000` (see the `server.proxy` config in `vite.config.ts`), so
+run the backend alongside `npm run dev`.
+
+## Tooling
+
+- Build/dev: Vite with `@vitejs/plugin-react`.
+- Linting: ESLint. Formatting: Prettier.
+- Tests: Vitest (unit/component) and Playwright (end-to-end).

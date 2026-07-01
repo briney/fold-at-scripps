@@ -83,17 +83,16 @@ export function describeField(name: string, raw: JsonSchema, required: boolean):
   };
 }
 
-/** Whether a field renders in the guided (top) section rather than Advanced. */
+/**
+ * Whether a field renders in the guided (top) section rather than Advanced.
+ *
+ * Required fields are always guided, regardless of widget kind — otherwise a
+ * required `json` or `string-array` field would be hidden inside the collapsed
+ * Advanced panel, leaving the user with an unfillable, silently-failing form.
+ * Optional fields are placed under Advanced.
+ */
 export function isGuided(field: FieldDescriptor): boolean {
-  const scalarKinds: ReadonlySet<FieldKind> = new Set([
-    "enum",
-    "file",
-    "text",
-    "textarea",
-    "number",
-    "boolean",
-  ]);
-  return field.required && scalarKinds.has(field.kind);
+  return field.required;
 }
 
 /** Build descriptors for every top-level property, in declaration order. */
