@@ -1,9 +1,18 @@
-import { screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter } from "react-router-dom";
 
 import App from "@/App";
-import { renderWithProviders } from "@/lib/test/render";
+import { createQueryClient } from "@/lib/query";
 
-test("renders the login page on the public route", () => {
-  renderWithProviders(<App />, { route: "/login" });
-  expect(screen.getByRole("heading", { name: /log in/i })).toBeInTheDocument();
+test("lazy-loads and renders the login route through Suspense", async () => {
+  render(
+    <QueryClientProvider client={createQueryClient()}>
+      <MemoryRouter initialEntries={["/login"]}>
+        <App />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+  // Login is a public lazy route; it resolves through <Suspense>.
+  expect(await screen.findByRole("heading", { name: /log in/i })).toBeInTheDocument();
 });

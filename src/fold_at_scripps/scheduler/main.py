@@ -3,14 +3,19 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 
 from fold_at_scripps.autobio_executor import AutobioExecutor
 from fold_at_scripps.config import get_settings
-from fold_at_scripps.db import get_sessionmaker
+from fold_at_scripps.db import get_engine, get_sessionmaker
+from fold_at_scripps.logging_config import configure_logging
+from fold_at_scripps.scheduler.locking import acquire_scheduler_lock
 from fold_at_scripps.scheduler.pool import GpuPool
 from fold_at_scripps.scheduler.recovery import fail_orphaned_runs
 from fold_at_scripps.scheduler.service import Scheduler
 from fold_at_scripps.storage import get_storage
+
+logger = logging.getLogger(__name__)
 
 
 def build_scheduler() -> Scheduler:
@@ -35,17 +40,30 @@ def build_scheduler() -> Scheduler:
 
 
 async def run_scheduler() -> None:
-    """Recover orphaned runs, then poll forever.
+    """Enforce single-scheduler, recover orphaned runs, then poll forever.
 
-    See ``build_scheduler`` for the single-process GPU-owner invariant.
+    The single-process GPU-owner invariant described in ``build_scheduler`` is
+    enforced here by taking a Postgres advisory lock on a dedicated connection
+    before doing any work.  The connection is held open for the process lifetime
+    so the lock persists; if another scheduler already holds it, this process
+    exits with a non-zero status.
     """
-    async with get_sessionmaker()() as session:
-        await fail_orphaned_runs(session)
-    await build_scheduler().run_forever()
+    configure_logging(get_settings().log_level)
+    lock_conn = await acquire_scheduler_lock(get_engine())
+    if lock_conn is None:
+        logger.error("Another fold-scheduler holds the advisory lock; exiting.")
+        raise SystemExit(1)
+    try:
+        async with get_sessionmaker()() as session:
+            await fail_orphaned_runs(session)
+        await build_scheduler().run_forever()
+    finally:
+        await lock_conn.close()
 
 
 def main() -> None:
     """Console-script entry point for the scheduler daemon."""
+    configure_logging(get_settings().log_level)
     asyncio.run(run_scheduler())
 
 

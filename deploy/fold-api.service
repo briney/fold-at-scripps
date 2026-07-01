@@ -1,0 +1,22 @@
+# deploy/fold-api.service
+[Unit]
+Description=fold@Scripps API (uvicorn)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=fold
+WorkingDirectory=/opt/fold-at-scripps
+EnvironmentFile=/etc/fold/fold.env
+# systemd uses a minimal PATH that omits uv's install dir. uv installs to the
+# fold user's ~/.local/bin by default; adjust if you installed it elsewhere
+# (e.g. /usr/local/bin). Without this, `uv` is "not found" at ExecStart.
+Environment=PATH=/home/fold/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStartPre=/usr/bin/env uv run alembic upgrade head
+ExecStart=/usr/bin/env uv run uvicorn fold_at_scripps.main:app --host 0.0.0.0 --port 8000
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
