@@ -5,7 +5,7 @@ from __future__ import annotations
 import datetime
 import uuid
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, EmailStr
 
 from fold_at_scripps.models import UserRole, UserStatus, UserTier
 
@@ -31,3 +31,19 @@ class AdminUserUpdate(BaseModel):
     status: UserStatus | None = None
     tier: UserTier | None = None
     max_concurrent_runs_override: int | None = None
+
+
+class AllowedEmailRead(BaseModel):
+    """An allowlisted email."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    email: str
+    created_at: datetime.datetime
+
+
+class AllowedEmailCreate(BaseModel):
+    """Payload to allowlist an email."""
+
+    email: EmailStr
