@@ -15,6 +15,7 @@ from fold_at_scripps.admin.access import (
     list_allowed_emails,
     remove_allowed_email,
 )
+from fold_at_scripps.admin.passwords import create_password_reset
 from fold_at_scripps.admin.users import UserNotFound, get_user, list_users, update_user
 from fold_at_scripps.auth.dependencies import require_admin
 from fold_at_scripps.db import get_session
@@ -24,6 +25,7 @@ from fold_at_scripps.schemas.admin import (
     AdminUserUpdate,
     AllowedEmailCreate,
     AllowedEmailRead,
+    PasswordResetResponse,
 )
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin)])
@@ -92,3 +94,21 @@ async def admin_remove_allowed_email(
         await remove_allowed_email(session, actor=actor, allowed_id=allowed_id)
     except AllowedEmailNotFound as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.post(
+    "/users/{user_id}/password-reset",
+    response_model=PasswordResetResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def admin_create_password_reset(
+    user_id: uuid.UUID,
+    session: AsyncSession = Depends(get_session),
+    actor: User = Depends(require_admin),
+) -> Any:
+    """Create a one-time password-reset token for a user."""
+    try:
+        token, row = await create_password_reset(session, actor=actor, user_id=user_id)
+    except UserNotFound as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return PasswordResetResponse(token=token, expires_at=row.expires_at)

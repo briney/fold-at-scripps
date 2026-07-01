@@ -35,3 +35,10 @@ class UserRead(BaseModel):
     role: UserRole
     tier: UserTier
     status: UserStatus
+
+
+class PasswordResetRedeem(BaseModel):
+    """Payload to redeem a password-reset token."""
+
+    token: str
+    new_password: str = Field(min_length=8)

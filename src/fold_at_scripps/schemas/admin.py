@@ -47,3 +47,10 @@ class AllowedEmailCreate(BaseModel):
     """Payload to allowlist an email."""
 
     email: EmailStr
+
+
+class PasswordResetResponse(BaseModel):
+    """A freshly-created reset token (shown once to the admin)."""
+
+    token: str
+    expires_at: datetime.datetime
