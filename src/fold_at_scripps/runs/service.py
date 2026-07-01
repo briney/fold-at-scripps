@@ -5,6 +5,8 @@ from __future__ import annotations
 import asyncio
 import datetime
 import uuid
+from collections.abc import Sequence
+from dataclasses import dataclass
 from typing import Any
 
 from sqlalchemy import select
@@ -16,6 +18,31 @@ from fold_at_scripps.models import Artifact, Run, RunStatus, Tool, User
 from fold_at_scripps.runs.quota import check_quota
 from fold_at_scripps.runs.validation import validate_params
 from fold_at_scripps.storage import Storage
+from fold_at_scripps.system_settings import get_system_settings
+
+
+@dataclass(frozen=True)
+class InputFile:
+    """An uploaded input file to stage for a run."""
+
+    filename: str
+    content: bytes
+
+
+def _resolve_input_paths(
+    params: dict[str, Any], schema: dict[str, Any], staged: dict[str, str]
+) -> dict[str, Any]:
+    """Return params with top-level ``format: 'path'`` fields naming an uploaded file
+    rewritten to that file's absolute staged path. Other values pass through unchanged.
+    """
+    properties = schema.get("properties", {})
+    resolved = dict(params)
+    for key, spec in properties.items():
+        if isinstance(spec, dict) and spec.get("format") == "path" and key in resolved:
+            value = resolved[key]
+            if isinstance(value, str) and value in staged:
+                resolved[key] = staged[value]
+    return resolved
 
 
 async def submit_run(
@@ -25,25 +52,51 @@ async def submit_run(
     tool: Tool,
     params: dict[str, Any],
     storage: Storage,
+    inputs: Sequence[InputFile] | None = None,
 ) -> Run:
-    """Validate params, enforce the quota, persist the config, and queue a run.
+    """Validate params, enforce the quota atomically, stage inputs, and queue a run.
+
+    Concurrent submissions by the same user are serialized via a row lock on the user
+    (``SELECT … FOR UPDATE``) held until commit, so the quota check cannot race. The
+    run's config is written with path-typed params resolved to staged input paths;
+    ``Run.params`` retains the user-supplied values.
 
     Raises:
         InvalidParams: params do not satisfy the tool's input schema.
         QuotaExceeded: the user is at their concurrency limit.
     """
+    inputs = inputs or ()
     validate_params(params, tool.input_schema)
+
+    # Ensure the SystemSettings singleton exists before locking: on first-ever access
+    # get_system_settings() would otherwise commit to persist its defaults, which
+    # would release the row lock below before the quota check runs.
+    await get_system_settings(session)
+
+    # Serialize this user's concurrent submissions so the quota check is atomic.
+    await session.execute(select(User.id).where(User.id == user.id).with_for_update())
     await check_quota(session, user)
 
     run = Run(user_id=user.id, tool_id=tool.id, params=params, status=RunStatus.QUEUED)
     session.add(run)
     await session.flush()  # assign run.id
+    run_id = run.id
 
-    storage.create_run_dir(run.id)
-    storage.write_config(run.id, params)
-    run.output_dir = str(storage.run_root(run.id))
+    try:
+        storage.create_run_dir(run_id)
+        staged: dict[str, str] = {}
+        for item in inputs:
+            storage.write_input(run_id, item.filename, item.content)
+            staged[item.filename] = str(storage.input_path(run_id, item.filename))
+        storage.write_config(run_id, _resolve_input_paths(params, tool.input_schema, staged))
+        run.output_dir = str(storage.run_root(run_id))
+        await session.commit()
+    except Exception:
+        # Never leave a half-written run: undo the transaction and remove staged files.
+        await session.rollback()
+        storage.remove_run_dir(run_id)
+        raise
 
-    await session.commit()
     await session.refresh(run)
     return run
 
