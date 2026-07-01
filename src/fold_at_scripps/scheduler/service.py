@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import uuid
 
 from sqlalchemy.ext.asyncio import async_sessionmaker
@@ -14,6 +15,8 @@ from fold_at_scripps.scheduler.claim import claim_runnable_run
 from fold_at_scripps.scheduler.pool import GpuPool
 from fold_at_scripps.storage import Storage
 from fold_at_scripps.system_settings import get_system_settings
+
+logger = logging.getLogger(__name__)
 
 
 class Scheduler:
@@ -39,6 +42,8 @@ class Scheduler:
         """Release GPUs for finished dispatches."""
         for run_id, (task, gpu_ids) in list(self._inflight.items()):
             if task.done():
+                if not task.cancelled() and task.exception() is not None:
+                    logger.error("Dispatch for run %s failed", run_id, exc_info=task.exception())
                 self._pool.release(gpu_ids)
                 del self._inflight[run_id]
 
@@ -46,8 +51,10 @@ class Scheduler:
         """Execute a claimed (RUNNING) run in its own session."""
         async with self._sessionmaker() as session:
             run = await session.get(Run, run_id)
-            if run is not None:
-                await execute_run(session, run, self._executor, self._storage)
+            if run is None:
+                logger.warning("Claimed run %s no longer exists; skipping dispatch", run_id)
+                return
+            await execute_run(session, run, self._executor, self._storage)
 
     async def run_once(self) -> None:
         """One scheduling iteration: reap, then (unless in maintenance) claim+dispatch."""
