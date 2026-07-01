@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fold_at_scripps.admin.access import (
@@ -17,19 +17,25 @@ from fold_at_scripps.admin.access import (
 )
 from fold_at_scripps.admin.catalog import ToolNotFound, set_tool_enabled, trigger_sync
 from fold_at_scripps.admin.passwords import create_password_reset
+from fold_at_scripps.admin.runs import admin_cancel_run, admin_get_run, admin_list_runs
 from fold_at_scripps.admin.settings import update_settings
 from fold_at_scripps.admin.users import UserNotFound, get_user, list_users, update_user
+from fold_at_scripps.audit import list_audit_logs
 from fold_at_scripps.auth.dependencies import require_admin
 from fold_at_scripps.catalog.autobio_source import get_tool_source
 from fold_at_scripps.catalog.service import list_all_tools
 from fold_at_scripps.catalog.sources import ToolSource
 from fold_at_scripps.db import get_session
-from fold_at_scripps.models import User
+from fold_at_scripps.models import RunStatus, User
+from fold_at_scripps.runs.service import RunNotCancelable, RunNotFound
 from fold_at_scripps.schemas.admin import (
+    AdminRunRead,
+    AdminRunSummary,
     AdminUserRead,
     AdminUserUpdate,
     AllowedEmailCreate,
     AllowedEmailRead,
+    AuditLogRead,
     CatalogSyncResult,
     PasswordResetResponse,
     SystemSettingsRead,
@@ -173,3 +179,43 @@ async def admin_sync_catalog(
 ) -> Any:
     """Trigger a catalog sync from the configured tool source."""
     return await trigger_sync(session, actor=actor, source=source)
+
+
+@router.get("/runs", response_model=list[AdminRunSummary])
+async def admin_runs(
+    user_id: uuid.UUID | None = None,
+    run_status: RunStatus | None = Query(default=None, alias="status"),
+    session: AsyncSession = Depends(get_session),
+) -> Any:
+    """List all runs, optionally filtered by user and/or status."""
+    return await admin_list_runs(session, user_id=user_id, status=run_status)
+
+
+@router.get("/runs/{run_id}", response_model=AdminRunRead)
+async def admin_run_detail(run_id: uuid.UUID, session: AsyncSession = Depends(get_session)) -> Any:
+    """Return one run with owner, tool, and artifacts."""
+    run = await admin_get_run(session, run_id)
+    if run is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
+    return run
+
+
+@router.post("/runs/{run_id}/cancel", response_model=AdminRunRead)
+async def admin_cancel(
+    run_id: uuid.UUID,
+    session: AsyncSession = Depends(get_session),
+    actor: User = Depends(require_admin),
+) -> Any:
+    """Cancel any user's queued run."""
+    try:
+        return await admin_cancel_run(session, actor=actor, run_id=run_id)
+    except RunNotFound as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except RunNotCancelable as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+
+@router.get("/audit-logs", response_model=list[AuditLogRead])
+async def admin_audit_logs(limit: int = 100, session: AsyncSession = Depends(get_session)) -> Any:
+    """Return recent audit-log entries, newest first."""
+    return await list_audit_logs(session, limit=limit)

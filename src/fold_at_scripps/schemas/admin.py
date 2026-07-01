@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import datetime
 import uuid
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-from fold_at_scripps.models import UserRole, UserStatus, UserTier
+from fold_at_scripps.models import RunStatus, UserRole, UserStatus, UserTier
+from fold_at_scripps.schemas.runs import ArtifactRead, ToolRef
 
 
 class AdminUserRead(BaseModel):
@@ -103,3 +105,52 @@ class CatalogSyncResult(BaseModel):
 
     added: int
     updated: int
+
+
+class UserRef(BaseModel):
+    """Compact reference to a run's owner."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    email: str
+    display_name: str
+
+
+class AdminRunSummary(BaseModel):
+    """Compact run representation for admin oversight (includes owner)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    tool: ToolRef
+    user: UserRef
+    status: RunStatus
+    created_at: datetime.datetime
+    started_at: datetime.datetime | None
+    finished_at: datetime.datetime | None
+
+
+class AdminRunRead(AdminRunSummary):
+    """Full run representation for admin oversight."""
+
+    params: dict[str, Any]
+    assigned_gpu_ids: list[int] | None
+    wall_time_seconds: float | None
+    gpu_seconds: float | None
+    error: str | None
+    artifacts: list[ArtifactRead]
+
+
+class AuditLogRead(BaseModel):
+    """An audit-log entry."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    actor_id: uuid.UUID | None
+    action: str
+    target_type: str | None
+    target_id: str | None
+    details: dict[str, Any] | None
+    created_at: datetime.datetime
