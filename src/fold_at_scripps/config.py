@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     max_upload_bytes: int = 100 * 1024 * 1024  # 100 MB request-body cap
     frontend_dist: str = "frontend/dist"
+    api_port: int = 8000
 
 
 @lru_cache

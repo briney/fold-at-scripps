@@ -17,11 +17,11 @@ dependencies = [
     "typer>=0.12",
     "jsonschema>=4.21",
     "python-multipart>=0.0.9",
+    "rich>=13.7",
 ]
 
 [project.scripts]
-fold-admin = "fold_at_scripps.cli:main"
-fold-scheduler = "fold_at_scripps.scheduler.main:main"
+foldapp = "fold_at_scripps.foldapp.cli:main"
 
 [dependency-groups]
 dev = [

@@ -10,7 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typer.testing import CliRunner
 
-from fold_at_scripps.cli import app
+from fold_at_scripps.foldapp.cli import app
 from fold_at_scripps.models import AllowedEmail, Tool, User, UserRole, UserStatus
 
 pytestmark = pytest.mark.integration
@@ -23,6 +23,7 @@ async def test_create_admin_creates_active_admin(db_session: AsyncSession) -> No
         runner.invoke,
         app,
         [
+            "admin",
             "create-admin",
             "--email",
             "boss@scripps.edu",
@@ -46,6 +47,7 @@ async def test_create_admin_creates_active_admin(db_session: AsyncSession) -> No
 
 async def test_create_admin_rejects_duplicate(db_session: AsyncSession) -> None:
     args = [
+        "admin",
         "create-admin",
         "--email",
         "boss@scripps.edu",
@@ -62,7 +64,7 @@ async def test_create_admin_rejects_duplicate(db_session: AsyncSession) -> None:
 
 @pytest.mark.skipif(shutil.which("autobio") is None, reason="autobio CLI not on PATH")
 async def test_sync_catalog_populates_tools(db_session: AsyncSession) -> None:
-    result = await asyncio.to_thread(runner.invoke, app, ["sync-catalog"])
+    result = await asyncio.to_thread(runner.invoke, app, ["catalog", "sync"])
     assert result.exit_code == 0, result.output
     count = await db_session.scalar(select(func.count()).select_from(Tool))
     assert count > 0
