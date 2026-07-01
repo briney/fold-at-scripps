@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import mimetypes
+import shutil
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
@@ -32,6 +33,8 @@ class Storage(Protocol):
     def outputs_dir(self, run_id: uuid.UUID) -> Path: ...
     def run_root(self, run_id: uuid.UUID) -> Path: ...
     def list_outputs(self, run_id: uuid.UUID) -> list[StoredFile]: ...
+    def write_input(self, run_id: uuid.UUID, filename: str, content: bytes) -> str: ...
+    def remove_run_dir(self, run_id: uuid.UUID) -> None: ...
 
 
 class LocalStorage:
@@ -87,6 +90,17 @@ class LocalStorage:
                 )
             )
         return files
+
+    def write_input(self, run_id: uuid.UUID, filename: str, content: bytes) -> str:
+        """Stage an uploaded input file under ``inputs/``; return its relative path."""
+        path = self.input_path(run_id, filename)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+        return f"inputs/{path.name}"
+
+    def remove_run_dir(self, run_id: uuid.UUID) -> None:
+        """Best-effort recursive removal of the run's directory tree."""
+        shutil.rmtree(self.run_root(run_id), ignore_errors=True)
 
 
 def get_storage() -> Storage:

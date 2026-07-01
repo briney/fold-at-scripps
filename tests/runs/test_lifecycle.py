@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime
+import uuid
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fold_at_scripps.models import Run, RunStatus, Tool, User
 from fold_at_scripps.runs.service import (
     RunNotCancelable,
+    RunNotFound,
     cancel_run,
     get_run,
     list_runs,
@@ -79,6 +81,12 @@ async def test_cancel_non_queued_raises(db_session: AsyncSession) -> None:
     run = await _run(db_session, user, tool, status=RunStatus.RUNNING)
     with pytest.raises(RunNotCancelable):
         await cancel_run(db_session, user, run.id)
+
+
+async def test_cancel_unknown_run_raises_not_found(db_session: AsyncSession) -> None:
+    user = await _user(db_session)
+    with pytest.raises(RunNotFound):
+        await cancel_run(db_session, user, uuid.uuid4())
 
 
 async def test_soft_delete_hides_run(db_session: AsyncSession) -> None:

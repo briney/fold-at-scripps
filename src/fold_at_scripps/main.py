@@ -10,6 +10,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from fold_at_scripps.api.auth import router as auth_router
 from fold_at_scripps.api.health import router as health_router
+from fold_at_scripps.api.runs import router as runs_router
 from fold_at_scripps.api.tools import router as tools_router
 from fold_at_scripps.config import get_settings
 from fold_at_scripps.db import dispose_engine
@@ -35,6 +36,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(auth_router)
     app.include_router(tools_router)
+    app.include_router(runs_router)
     return app
 
 

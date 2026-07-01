@@ -5,9 +5,11 @@ from __future__ import annotations
 import asyncio
 import datetime
 import uuid
+from collections.abc import Sequence
+from dataclasses import dataclass
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -16,6 +18,31 @@ from fold_at_scripps.models import Artifact, Run, RunStatus, Tool, User
 from fold_at_scripps.runs.quota import check_quota
 from fold_at_scripps.runs.validation import validate_params
 from fold_at_scripps.storage import Storage
+from fold_at_scripps.system_settings import get_system_settings
+
+
+@dataclass(frozen=True)
+class InputFile:
+    """An uploaded input file to stage for a run."""
+
+    filename: str
+    content: bytes
+
+
+def _resolve_input_paths(
+    params: dict[str, Any], schema: dict[str, Any], staged: dict[str, str]
+) -> dict[str, Any]:
+    """Return params with top-level ``format: 'path'`` fields naming an uploaded file
+    rewritten to that file's absolute staged path. Other values pass through unchanged.
+    """
+    properties = schema.get("properties", {})
+    resolved = dict(params)
+    for key, spec in properties.items():
+        if isinstance(spec, dict) and spec.get("format") == "path" and key in resolved:
+            value = resolved[key]
+            if isinstance(value, str) and value in staged:
+                resolved[key] = staged[value]
+    return resolved
 
 
 async def submit_run(
@@ -25,31 +52,62 @@ async def submit_run(
     tool: Tool,
     params: dict[str, Any],
     storage: Storage,
+    inputs: Sequence[InputFile] | None = None,
 ) -> Run:
-    """Validate params, enforce the quota, persist the config, and queue a run.
+    """Validate params, enforce the quota atomically, stage inputs, and queue a run.
+
+    Concurrent submissions by the same user are serialized via a row lock on the user
+    (``SELECT … FOR UPDATE``) held until commit, so the quota check cannot race. The
+    run's config is written with path-typed params resolved to staged input paths;
+    ``Run.params`` retains the user-supplied values.
 
     Raises:
         InvalidParams: params do not satisfy the tool's input schema.
         QuotaExceeded: the user is at their concurrency limit.
     """
+    inputs = inputs or ()
     validate_params(params, tool.input_schema)
+
+    # Resolve/create the SystemSettings singleton before taking the user-row lock: on a
+    # cold DB its creation can block on the singleton PK when callers race, so doing it
+    # here keeps that out of the FOR UPDATE critical section. get_system_settings creates
+    # the row inside a SAVEPOINT, so it never releases this transaction's locks.
+    await get_system_settings(session)
+
+    # Serialize this user's concurrent submissions so the quota check is atomic.
+    await session.execute(select(User.id).where(User.id == user.id).with_for_update())
     await check_quota(session, user)
 
     run = Run(user_id=user.id, tool_id=tool.id, params=params, status=RunStatus.QUEUED)
     session.add(run)
     await session.flush()  # assign run.id
+    run_id = run.id
 
-    storage.create_run_dir(run.id)
-    storage.write_config(run.id, params)
-    run.output_dir = str(storage.run_root(run.id))
+    try:
+        storage.create_run_dir(run_id)
+        staged: dict[str, str] = {}
+        for item in inputs:
+            storage.write_input(run_id, item.filename, item.content)
+            staged[item.filename] = str(storage.input_path(run_id, item.filename))
+        storage.write_config(run_id, _resolve_input_paths(params, tool.input_schema, staged))
+        run.output_dir = str(storage.run_root(run_id))
+        await session.commit()
+    except Exception:
+        # Never leave a half-written run: undo the transaction and remove staged files.
+        await session.rollback()
+        storage.remove_run_dir(run_id)
+        raise
 
-    await session.commit()
     await session.refresh(run)
     return run
 
 
 class RunNotCancelable(Exception):
     """Raised when a run cannot be canceled from its current state."""
+
+
+class RunNotFound(Exception):
+    """Raised when a run does not exist or is not visible to the user."""
 
 
 async def list_runs(session: AsyncSession, user: User) -> list[Run]:
@@ -74,11 +132,24 @@ async def get_run(session: AsyncSession, user: User, run_id: uuid.UUID) -> Run |
 
 
 async def cancel_run(session: AsyncSession, user: User, run_id: uuid.UUID) -> Run:
-    """Cancel a queued run. Raises RunNotCancelable if it is not queued (or not found)."""
+    """Cancel the user's queued run.
+
+    Raises:
+        RunNotFound: no such run for this user (unknown, not owned, or hidden).
+        RunNotCancelable: the run exists but is not QUEUED (e.g. already claimed).
+    """
     run = await get_run(session, user, run_id)
-    if run is None or run.status is not RunStatus.QUEUED:
+    if run is None:
+        raise RunNotFound(f"Run {run_id} not found")
+    # Atomic against the scheduler's claim: only cancel if still QUEUED.
+    result = await session.execute(
+        update(Run)
+        .where(Run.id == run_id, Run.status == RunStatus.QUEUED)
+        .values(status=RunStatus.CANCELED)
+    )
+    if result.rowcount == 0:
+        await session.rollback()
         raise RunNotCancelable("Only queued runs can be canceled")
-    run.status = RunStatus.CANCELED
     await session.commit()
     await session.refresh(run)
     return run
