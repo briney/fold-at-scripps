@@ -44,3 +44,9 @@ def test_config_init_creates_env(tmp_path, monkeypatch):
 
 def test_version_smoke():
     assert runner.invoke(app, ["version"]).exit_code == 0
+
+
+def test_admin_and_catalog_help():
+    assert runner.invoke(app, ["admin", "--help"]).exit_code == 0
+    assert runner.invoke(app, ["catalog", "--help"]).exit_code == 0
+    assert "create-admin" in runner.invoke(app, ["admin", "--help"]).output

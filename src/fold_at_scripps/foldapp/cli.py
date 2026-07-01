@@ -282,6 +282,75 @@ def uninstall(
     console.print("[green]uninstalled[/]")
 
 
+admin_app = typer.Typer(help="Administrative actions.")
+catalog_app = typer.Typer(help="Tool catalog.")
+app.add_typer(admin_app, name="admin")
+app.add_typer(catalog_app, name="catalog")
+
+
+@admin_app.command("create-admin")
+def admin_create_admin(
+    email: str = typer.Option(..., help="Admin email address."),
+    password: str = typer.Option(..., prompt=True, hide_input=True, help="Admin password."),
+    display_name: str = typer.Option(..., help="Admin display name."),
+) -> None:
+    """Create an active admin account and allowlist its email."""
+    import asyncio
+
+    from sqlalchemy import select
+
+    from fold_at_scripps.auth.passwords import hash_password
+    from fold_at_scripps.db import dispose_engine, get_sessionmaker
+    from fold_at_scripps.models import AllowedEmail, User, UserRole, UserStatus
+
+    async def _create() -> None:
+        try:
+            async with get_sessionmaker()() as session:
+                if await session.scalar(select(User).where(User.email == email)):
+                    console.print(f"[red]error[/] user {email} already exists")
+                    raise typer.Exit(code=1)
+                allowed = await session.scalar(
+                    select(AllowedEmail).where(AllowedEmail.email == email)
+                )
+                if not allowed:
+                    session.add(AllowedEmail(email=email))
+                session.add(
+                    User(
+                        email=email,
+                        display_name=display_name,
+                        hashed_password=hash_password(password),
+                        role=UserRole.ADMIN,
+                        status=UserStatus.ACTIVE,
+                    )
+                )
+                await session.commit()
+            console.print(f"[green]created admin[/] {email}")
+        finally:
+            await dispose_engine()
+
+    asyncio.run(_create())
+
+
+@catalog_app.command("sync")
+def catalog_sync() -> None:
+    """Sync the tool catalog from autobio."""
+    import asyncio
+
+    from fold_at_scripps.catalog.autobio_source import AutobioToolSource
+    from fold_at_scripps.catalog.service import sync_catalog
+    from fold_at_scripps.db import dispose_engine, get_sessionmaker
+
+    async def _sync() -> None:
+        try:
+            async with get_sessionmaker()() as session:
+                result = await sync_catalog(session, AutobioToolSource())
+            console.print(f"[green]synced[/] {result.added} added, {result.updated} updated")
+        finally:
+            await dispose_engine()
+
+    asyncio.run(_sync())
+
+
 def main() -> None:
     """Console-script entry point."""
     app()
