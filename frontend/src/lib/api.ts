@@ -1,4 +1,22 @@
-import type { RunRead, RunSummary, ToolRead, ToolSummary, UserRead } from "@/types/api";
+import type {
+  AdminRunRead,
+  AdminRunSummary,
+  AdminUserRead,
+  AdminUserUpdate,
+  AllowedEmailRead,
+  AuditLogRead,
+  CatalogSyncResult,
+  PasswordResetResponse,
+  RunRead,
+  RunStatus,
+  RunSummary,
+  SystemSettingsRead,
+  SystemSettingsUpdate,
+  ToolAdminRead,
+  ToolRead,
+  ToolSummary,
+  UserRead,
+} from "@/types/api";
 
 export class ApiError extends Error {
   status: number;
@@ -58,3 +76,45 @@ export const cancelRun = (id: string) => request<RunRead>(`/runs/${id}/cancel`, 
 export const deleteRun = (id: string) => request<void>(`/runs/${id}`, { method: "DELETE" });
 export const artifactUrl = (runId: string, path: string) =>
   `/runs/${runId}/artifacts/${path.split("/").map(encodeURIComponent).join("/")}`;
+
+export const adminListUsers = () => request<AdminUserRead[]>("/admin/users");
+export const adminGetUser = (id: string) => request<AdminUserRead>(`/admin/users/${id}`);
+export const adminUpdateUser = (id: string, changes: AdminUserUpdate) =>
+  request<AdminUserRead>(`/admin/users/${id}`, jsonPost(changes, "PATCH"));
+export const adminCreatePasswordReset = (id: string) =>
+  request<PasswordResetResponse>(`/admin/users/${id}/password-reset`, { method: "POST" });
+
+export const adminListAllowedEmails = () => request<AllowedEmailRead[]>("/admin/allowed-emails");
+export const adminAddAllowedEmail = (email: string) =>
+  request<AllowedEmailRead>("/admin/allowed-emails", jsonPost({ email }));
+export const adminRemoveAllowedEmail = (id: string) =>
+  request<void>(`/admin/allowed-emails/${id}`, { method: "DELETE" });
+
+export const adminGetSettings = () => request<SystemSettingsRead>("/admin/settings");
+export const adminUpdateSettings = (changes: SystemSettingsUpdate) =>
+  request<SystemSettingsRead>("/admin/settings", jsonPost(changes, "PATCH"));
+
+export const adminListTools = () => request<ToolAdminRead[]>("/admin/tools");
+export const adminSetToolEnabled = (id: string, enabled: boolean) =>
+  request<ToolAdminRead>(`/admin/tools/${id}`, jsonPost({ enabled }, "PATCH"));
+export const adminSyncCatalog = () =>
+  request<CatalogSyncResult>("/admin/catalog/sync", { method: "POST" });
+
+export function adminListRuns(params: { userId?: string; status?: RunStatus } = {}) {
+  const qs = new URLSearchParams();
+  if (params.userId) qs.set("user_id", params.userId);
+  if (params.status) qs.set("status", params.status);
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return request<AdminRunSummary[]>(`/admin/runs${suffix}`);
+}
+export const adminGetRun = (id: string) => request<AdminRunRead>(`/admin/runs/${id}`);
+export const adminCancelRun = (id: string) =>
+  request<AdminRunRead>(`/admin/runs/${id}/cancel`, { method: "POST" });
+
+export const adminListAuditLogs = (limit?: number) =>
+  request<AuditLogRead[]>(`/admin/audit-logs${limit ? `?limit=${limit}` : ""}`);
+
+// Admin artifact download (admin-gated endpoint from Task 0). Mirrors the
+// researcher `artifactUrl` but under /admin/runs; per-segment-encoded, keeps `/`.
+export const adminArtifactUrl = (runId: string, path: string) =>
+  `/admin/runs/${runId}/artifacts/${path.split("/").map(encodeURIComponent).join("/")}`;

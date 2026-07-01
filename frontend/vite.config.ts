@@ -11,6 +11,7 @@ export default defineConfig({
       "/auth": "http://localhost:8000",
       "/tools": "http://localhost:8000",
       "/runs": "http://localhost:8000",
+      "/admin": "http://localhost:8000",
       "/health": "http://localhost:8000",
     },
   },

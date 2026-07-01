@@ -3,7 +3,9 @@ import type { JSX } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import AppShell from "@/components/AppShell";
+import RequireAdmin from "@/components/RequireAdmin";
 import RequireAuth from "@/components/RequireAuth";
+import { Toaster } from "@/components/ui/sonner";
 import CatalogPage from "@/pages/CatalogPage";
 import LoginPage from "@/pages/LoginPage";
 import RegisterPage from "@/pages/RegisterPage";
@@ -11,22 +13,45 @@ import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import RunDetailPage from "@/pages/RunDetailPage";
 import RunsPage from "@/pages/RunsPage";
 import SubmitPage from "@/pages/SubmitPage";
+import AdminLayout from "@/pages/admin/AdminLayout";
+import AdminRunDetailPage from "@/pages/admin/AdminRunDetailPage";
+import AdminRunsPage from "@/pages/admin/AdminRunsPage";
+import AdminCatalogPage from "@/pages/admin/CatalogPage";
+import AllowlistPage from "@/pages/admin/AllowlistPage";
+import AuditLogPage from "@/pages/admin/AuditLogPage";
+import SettingsPage from "@/pages/admin/SettingsPage";
+import UsersPage from "@/pages/admin/UsersPage";
 
 export default function App(): JSX.Element {
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
-      <Route path="/reset-password" element={<ResetPasswordPage />} />
-      <Route element={<RequireAuth />}>
-        <Route element={<AppShell />}>
-          <Route index element={<Navigate to="/tools" replace />} />
-          <Route path="/tools" element={<CatalogPage />} />
-          <Route path="/tools/:toolId" element={<SubmitPage />} />
-          <Route path="/runs" element={<RunsPage />} />
-          <Route path="/runs/:runId" element={<RunDetailPage />} />
+    <>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route element={<RequireAuth />}>
+          <Route element={<AppShell />}>
+            <Route index element={<Navigate to="/tools" replace />} />
+            <Route path="/tools" element={<CatalogPage />} />
+            <Route path="/tools/:toolId" element={<SubmitPage />} />
+            <Route path="/runs" element={<RunsPage />} />
+            <Route path="/runs/:runId" element={<RunDetailPage />} />
+            <Route path="admin" element={<RequireAdmin />}>
+              <Route element={<AdminLayout />}>
+                <Route index element={<Navigate to="/admin/users" replace />} />
+                <Route path="users" element={<UsersPage />} />
+                <Route path="allowed-emails" element={<AllowlistPage />} />
+                <Route path="settings" element={<SettingsPage />} />
+                <Route path="catalog" element={<AdminCatalogPage />} />
+                <Route path="runs" element={<AdminRunsPage />} />
+                <Route path="runs/:runId" element={<AdminRunDetailPage />} />
+                <Route path="audit" element={<AuditLogPage />} />
+              </Route>
+            </Route>
+          </Route>
         </Route>
-      </Route>
-    </Routes>
+      </Routes>
+      <Toaster />
+    </>
   );
 }
