@@ -33,6 +33,14 @@ export default tseslint.config(
     },
   },
   {
+    // Playwright E2E specs run in Node (config + `Buffer`), not the browser,
+    // and are transpiled by Playwright rather than the app's `tsc` build.
+    files: ["e2e/**/*.{ts,tsx}", "playwright.config.ts"],
+    languageOptions: {
+      globals: { ...globals.node },
+    },
+  },
+  {
     // shadcn/ui primitives intentionally co-export component + variant helpers
     // (e.g. buttonVariants). They are library files, not fast-refresh targets.
     files: ["src/components/ui/**/*.{ts,tsx}"],
