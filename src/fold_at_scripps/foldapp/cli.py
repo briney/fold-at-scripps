@@ -223,6 +223,65 @@ def _default(ctx: typer.Context) -> None:
         status()
 
 
+dev_app = typer.Typer(help="Local development stack.")
+app.add_typer(dev_app, name="dev")
+
+
+def _run_dev_processes(paths) -> None:
+    """Start uvicorn --reload and the Vite dev server; wait until interrupted."""
+    import subprocess
+
+    procs = [
+        subprocess.Popen(  # noqa: S603 - list args
+            ["uv", "run", "uvicorn", "fold_at_scripps.main:app", "--reload", "--port", "8000"],
+            cwd=str(paths.app_dir),
+        ),
+        subprocess.Popen(["npm", "run", "dev"], cwd=str(paths.app_dir / "frontend")),  # noqa: S603
+    ]
+    try:
+        for proc in procs:
+            proc.wait()
+    except KeyboardInterrupt:
+        for proc in procs:
+            proc.terminate()
+
+
+@dev_app.command("up")
+def dev_up() -> None:
+    """Foreground dev stack: Postgres + uvicorn --reload + Vite (Ctrl-C to stop)."""
+    from fold_at_scripps.foldapp import postgres
+
+    paths = context.resolve_paths()
+    postgres.compose_up(paths)
+    if not postgres.wait_ready(paths):
+        raise typer.Exit(code=1)
+    console.print("[green]dev[/] api :8000  vite :5173  (Ctrl-C to stop)")
+    _run_dev_processes(paths)
+
+
+@app.command()
+def uninstall(
+    purge: bool = typer.Option(False, "--purge", help="Also delete data/state."),
+    yes: bool = typer.Option(False, "--yes"),
+) -> None:
+    """Disable + remove the user units (keeps data unless --purge)."""
+    import shutil
+
+    paths = context.resolve_paths()
+    if not yes and not typer.confirm("Disable and remove fold services?"):
+        raise typer.Abort()
+    service.systemctl("stop", "all")
+    service.systemctl("disable", "all")
+    for unit in (paths.api_unit, paths.scheduler_unit):
+        unit.unlink(missing_ok=True)
+    from fold_at_scripps.foldapp.shell import run
+
+    run(["systemctl", "--user", "daemon-reload"], check=False)
+    if purge and (yes or typer.confirm(f"Delete {paths.state_dir}?")):
+        shutil.rmtree(paths.state_dir, ignore_errors=True)
+    console.print("[green]uninstalled[/]")
+
+
 def main() -> None:
     """Console-script entry point."""
     app()
