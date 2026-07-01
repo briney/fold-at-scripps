@@ -1,0 +1,22 @@
+PR merged and branch deleted. Now I'd like to make some quality-of-life improvements with respect to automating installation (dependencies, etc), deployment, and upgrade/refreshes.
+  I'm envisioning this as a CLI (`foldapp`) with various subcommands. Let's brainstorm about what we need, and the best way to implement.
+
+---
+
+I didn't realize that deployment entailed so many steps that require root. Is this standard "best practices" for a webapp like this? Why is root necessary and are there ways we can route around the need for root-level privilidges (for example, writing to an app-specific directory rather than `/etc/fold`, etc)? I'm not totally opposed to deploying as root, just surprised that root was required for a relatively straightforward webapp (when my -- possibly incorrect -- assumption was that building a webapp with similar function using something like flask wouldn't require sudo).
+
+---
+
+Let's go with Approach A
+
+---
+
+Looks right to me
+
+---
+
+Looks good
+
+---
+
+Great, go ahead with the spec doc
