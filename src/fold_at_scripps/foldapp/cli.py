@@ -161,11 +161,15 @@ def db_restore(
     console.print("[green]restored[/]")
 
 
-def _api_healthy(port: int = 8000, timeout: float = 2.0) -> bool:
+def _api_healthy(port: int | None = None, timeout: float = 2.0) -> bool:
     """True if GET /health returns 200 (stdlib only)."""
     import urllib.error
     import urllib.request
 
+    from fold_at_scripps.config import get_settings
+
+    if port is None:
+        port = get_settings().api_port
     try:
         with urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=timeout) as resp:
             return resp.status == 200
@@ -231,9 +235,20 @@ def _run_dev_processes(paths) -> None:
     """Start uvicorn --reload and the Vite dev server; wait until interrupted."""
     import subprocess
 
+    from fold_at_scripps.config import get_settings
+
+    port = get_settings().api_port
     procs = [
         subprocess.Popen(  # noqa: S603 - list args
-            ["uv", "run", "uvicorn", "fold_at_scripps.main:app", "--reload", "--port", "8000"],
+            [
+                "uv",
+                "run",
+                "uvicorn",
+                "fold_at_scripps.main:app",
+                "--reload",
+                "--port",
+                str(port),
+            ],
             cwd=str(paths.app_dir),
         ),
         subprocess.Popen(["npm", "run", "dev"], cwd=str(paths.app_dir / "frontend")),  # noqa: S603
@@ -249,13 +264,15 @@ def _run_dev_processes(paths) -> None:
 @dev_app.command("up")
 def dev_up() -> None:
     """Foreground dev stack: Postgres + uvicorn --reload + Vite (Ctrl-C to stop)."""
+    from fold_at_scripps.config import get_settings
     from fold_at_scripps.foldapp import postgres
 
     paths = context.resolve_paths()
     postgres.compose_up(paths)
     if not postgres.wait_ready(paths):
         raise typer.Exit(code=1)
-    console.print("[green]dev[/] api :8000  vite :5173  (Ctrl-C to stop)")
+    port = get_settings().api_port
+    console.print(f"[green]dev[/] api :{port}  vite :5173  (Ctrl-C to stop)")
     _run_dev_processes(paths)
 
 
@@ -270,8 +287,8 @@ def uninstall(
     paths = context.resolve_paths()
     if not yes and not typer.confirm("Disable and remove fold services?"):
         raise typer.Abort()
-    service.systemctl("stop", "all")
-    service.systemctl("disable", "all")
+    service.systemctl("stop", "all", check=False)
+    service.systemctl("disable", "all", check=False)
     for unit in (paths.api_unit, paths.scheduler_unit):
         unit.unlink(missing_ok=True)
     from fold_at_scripps.foldapp.shell import run

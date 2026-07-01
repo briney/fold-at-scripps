@@ -18,9 +18,9 @@ def resolve_units(target: str) -> list[str]:
     raise ValueError(f"unknown target: {target}")
 
 
-def systemctl(action: str, target: str, *, dry_run: bool = False) -> None:
+def systemctl(action: str, target: str, *, dry_run: bool = False, check: bool = True) -> None:
     """Run ``systemctl --user <action>`` for the resolved units."""
-    run(["systemctl", "--user", action, *resolve_units(target)], dry_run=dry_run)
+    run(["systemctl", "--user", action, *resolve_units(target)], dry_run=dry_run, check=check)
 
 
 def is_active(unit: str, *, runner=run) -> bool:

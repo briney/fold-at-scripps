@@ -10,6 +10,7 @@ from datetime import UTC, datetime
 
 import rich
 
+from fold_at_scripps.config import get_settings
 from fold_at_scripps.foldapp import frontend, postgres, service
 from fold_at_scripps.foldapp.context import FoldappPaths
 from fold_at_scripps.foldapp.shell import run
@@ -57,8 +58,10 @@ def set_maintenance(enabled: bool, *, dry_run: bool = False) -> None:
     asyncio.run(_toggle())
 
 
-def wait_healthy(port: int = 8000, timeout: float = 60.0) -> bool:
+def wait_healthy(port: int | None = None, timeout: float = 60.0) -> bool:
     """Poll GET /health until 200 or timeout."""
+    if port is None:
+        port = get_settings().api_port
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         try:

@@ -18,11 +18,18 @@ class DeployState:
 
 
 def read_state(path: Path) -> DeployState | None:
-    """Load the deploy state, or ``None`` if it does not exist."""
+    """Load the deploy state, or ``None`` if it does not exist.
+
+    Raises:
+        RuntimeError: If the state file exists but is not valid, readable JSON.
+    """
     if not path.is_file():
         return None
-    data = json.loads(path.read_text())
-    return DeployState(**data)
+    try:
+        data = json.loads(path.read_text())
+        return DeployState(**data)
+    except (json.JSONDecodeError, TypeError) as exc:
+        raise RuntimeError(f"deploy state at {path} is unreadable: {exc}") from exc
 
 
 def write_state(path: Path, state: DeployState) -> None:

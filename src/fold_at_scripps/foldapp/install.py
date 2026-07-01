@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import rich
 
+from fold_at_scripps.config import get_settings
 from fold_at_scripps.foldapp import envfile, frontend, postgres, preflight, service, units
 from fold_at_scripps.foldapp.context import FoldappPaths
 
@@ -22,7 +23,8 @@ def deploy(paths: FoldappPaths, *, dry_run: bool = False, first_run: bool = Fals
         raise RuntimeError("postgres did not become ready in time")
     frontend.migrate(paths, dry_run=dry_run)
     frontend.build_frontend(paths, dry_run=dry_run)
-    units.install_units(paths, dry_run=dry_run)
+    port = get_settings().api_port
+    units.install_units(paths, port=port, dry_run=dry_run)
     service.systemctl("enable", "all", dry_run=dry_run)
     service.systemctl("restart", "all", dry_run=dry_run)
 

@@ -18,11 +18,17 @@ def test_uninstall_disables_units(monkeypatch, tmp_path):
     paths.scheduler_unit.write_text("x")
     monkeypatch.setattr(context, "resolve_paths", lambda **kw: paths)
     calls = []
-    monkeypatch.setattr(service, "systemctl", lambda action, target, **kw: calls.append(action))
+    monkeypatch.setattr(
+        service, "systemctl", lambda action, target, **kw: calls.append((action, kw))
+    )
     result = runner.invoke(app, ["uninstall", "--yes"])
     assert result.exit_code == 0
-    assert "disable" in calls
+    actions = [action for action, _kw in calls]
+    assert "disable" in actions
     assert not paths.api_unit.exists()
+    for action, kw in calls:
+        if action in ("stop", "disable"):
+            assert kw.get("check") is False, f"{action} must be called with check=False"
 
 
 def test_dev_up_starts_postgres_and_processes(monkeypatch):
