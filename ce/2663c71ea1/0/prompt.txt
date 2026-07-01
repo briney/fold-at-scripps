@@ -6262,3 +6262,7 @@ Approved, draft Plan 9b
 **Spec-coverage gap I could not fully close (flagged in the plan, needs a backend decision):** admin run-detail artifact **downloads** for *other users'* runs — Plan 7's `GET /runs/{id}/artifacts/{path}` is owner-scoped and 404s for a non-owner admin. Plan 8 added no admin artifact endpoint. The plan still renders the links (correct once the backend gains `GET /admin/runs/{id}/artifacts/{path}`) and notes it as a small backend follow-up, out of 9b's frontend scope.</result>
 <usage><subagent_tokens>705978</subagent_tokens><tool_uses>3</tool_uses><duration_ms>261891</duration_ms></usage>
 </task-notification>
+
+---
+
+same handoff
