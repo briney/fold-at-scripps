@@ -16,6 +16,7 @@ from fold_at_scripps.api.tools import router as tools_router
 from fold_at_scripps.config import Settings, get_settings
 from fold_at_scripps.db import dispose_engine
 from fold_at_scripps.logging_config import configure_logging
+from fold_at_scripps.middleware import BodySizeLimitMiddleware
 
 _DEV_SECRET_KEY = "dev-insecure-secret-change-me"
 
@@ -42,6 +43,7 @@ def create_app() -> FastAPI:
     configure_logging(settings.log_level)
     _require_production_secret(settings)
     app = FastAPI(title=settings.app_name, lifespan=lifespan)
+    app.add_middleware(BodySizeLimitMiddleware, max_bytes=settings.max_upload_bytes)
     app.add_middleware(
         SessionMiddleware,
         secret_key=settings.secret_key,
