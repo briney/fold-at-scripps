@@ -12,9 +12,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fold_at_scripps.auth.passwords import hash_password
 from fold_at_scripps.catalog.service import sync_catalog
 from fold_at_scripps.catalog.sources import FakeToolSource, ToolRecord
+from fold_at_scripps.config import get_settings
 from fold_at_scripps.main import create_app
 from fold_at_scripps.models import (
     AllowedEmail,
+    Artifact,
     Run,
     RunStatus,
     Tool,
@@ -22,8 +24,23 @@ from fold_at_scripps.models import (
     UserRole,
     UserStatus,
 )
+from fold_at_scripps.storage import get_storage
 
 pytestmark = pytest.mark.integration
+
+
+@pytest.fixture(autouse=True)
+def _tmp_storage_root(tmp_path, monkeypatch):
+    """Redirect storage_root to a tmp dir so real file staging never touches the repo.
+
+    Mirrors ``tests/api/test_runs.py``: the download endpoint serves real files, so
+    isolate them per test and clear the settings cache so both ``create_app()`` and
+    ``get_storage()`` pick up the override.
+    """
+    monkeypatch.setenv("FOLD_STORAGE_ROOT", str(tmp_path))
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
 
 
 def _client() -> AsyncClient:
@@ -130,6 +147,40 @@ async def test_admin_cancel_unknown_run_404(db_session: AsyncSession):
     async with _client() as client:
         await _login_admin(client, db_session)
         assert (await client.post(f"/admin/runs/{uuid.uuid4()}/cancel")).status_code == 404
+
+
+async def test_admin_downloads_another_users_artifact(db_session: AsyncSession):
+    tool = await _seed_tool(db_session)
+    alice = await _user(db_session, "alice@scripps.edu")
+    run = await _run(db_session, alice, tool, RunStatus.SUCCEEDED)
+    storage = get_storage()
+    target = storage.outputs_dir(run.id) / "raw/result.txt"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(b"HELLO")
+    db_session.add(
+        Artifact(
+            run_id=run.id,
+            name="result.txt",
+            path="raw/result.txt",
+            content_type="text/plain",
+            size_bytes=5,
+        )
+    )
+    await db_session.commit()
+    async with _client() as client:
+        await _login_admin(client, db_session)
+        resp = await client.get(f"/admin/runs/{run.id}/artifacts/raw/result.txt")
+        assert resp.status_code == 200
+        assert resp.content == b"HELLO"
+
+
+async def test_admin_download_unknown_artifact_404(db_session: AsyncSession):
+    tool = await _seed_tool(db_session)
+    alice = await _user(db_session, "alice@scripps.edu")
+    run = await _run(db_session, alice, tool, RunStatus.SUCCEEDED)
+    async with _client() as client:
+        await _login_admin(client, db_session)
+        assert (await client.get(f"/admin/runs/{run.id}/artifacts/nope.txt")).status_code == 404
 
 
 async def test_audit_log_lists_admin_actions(db_session: AsyncSession):

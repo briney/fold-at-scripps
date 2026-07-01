@@ -6,6 +6,7 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fold_at_scripps.admin.access import (
@@ -43,6 +44,7 @@ from fold_at_scripps.schemas.admin import (
     ToolAdminRead,
     ToolEnabledUpdate,
 )
+from fold_at_scripps.storage import Storage, get_storage
 from fold_at_scripps.system_settings import get_system_settings
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin)])
@@ -198,6 +200,28 @@ async def admin_run_detail(run_id: uuid.UUID, session: AsyncSession = Depends(ge
     if run is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
     return run
+
+
+@router.get("/runs/{run_id}/artifacts/{artifact_path:path}")
+async def admin_download_artifact(
+    run_id: uuid.UUID,
+    artifact_path: str,
+    session: AsyncSession = Depends(get_session),
+    storage: Storage = Depends(get_storage),
+) -> FileResponse:
+    """Stream any run's output file (admin-gated, traversal-guarded)."""
+    run = await admin_get_run(session, run_id)
+    if run is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
+    artifact = next((a for a in run.artifacts if a.path == artifact_path), None)
+    if artifact is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Artifact not found")
+    outputs = storage.outputs_dir(run_id).resolve()
+    target = (outputs / artifact_path).resolve()
+    if not target.is_relative_to(outputs) or not target.is_file():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Artifact not found")
+    media_type = artifact.content_type or "application/octet-stream"
+    return FileResponse(target, filename=artifact.name, media_type=media_type)
 
 
 @router.post("/runs/{run_id}/cancel", response_model=AdminRunRead)
