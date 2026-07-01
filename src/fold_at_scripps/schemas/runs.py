@@ -29,7 +29,7 @@ class ArtifactRead(BaseModel):
 
     name: str
     path: str
-    size_bytes: int
+    size_bytes: int | None
     content_type: str | None
 
 
