@@ -1,0 +1,45 @@
+{
+  "description": "Input schema for structure prediction tools (e.g., AlphaFold, ESMFold).",
+  "properties": {
+    "extra": {
+      "additionalProperties": true,
+      "description": "Tool-specific parameters passed through to the container. Keys and values are forwarded as-is into config.json.",
+      "title": "Extra",
+      "type": "object"
+    },
+    "sequences": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "Mapping of chain ID to amino acid sequence (e.g., {'A': 'MKLL...', 'B': 'GVSE...'}).",
+      "title": "Sequences",
+      "type": "object"
+    },
+    "num_models": {
+      "default": 1,
+      "description": "Number of structure models to generate.",
+      "title": "Num Models",
+      "type": "integer"
+    },
+    "templates": {
+      "anyOf": [
+        {
+          "items": {
+            "format": "path",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Paths to template structures (PDB or mmCIF) for template-based prediction.",
+      "title": "Templates"
+    }
+  },
+  "required": ["sequences"],
+  "title": "StructurePredictionInput",
+  "type": "object"
+}

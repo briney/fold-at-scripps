@@ -1,0 +1,89 @@
+{
+  "$defs": {
+    "AntibodySequence": {
+      "description": "A single antibody sequence entry with optional heavy and light chains.\n\nAt least one of ``heavy_chain`` or ``light_chain`` must be provided.",
+      "properties": {
+        "id": {
+          "description": "Unique identifier for this antibody sequence.",
+          "title": "Id",
+          "type": "string"
+        },
+        "heavy_chain": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Variable heavy (VH) amino acid sequence.",
+          "title": "Heavy Chain"
+        },
+        "light_chain": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Variable light (VL) amino acid sequence.",
+          "title": "Light Chain"
+        }
+      },
+      "required": ["id"],
+      "title": "AntibodySequence",
+      "type": "object"
+    }
+  },
+  "description": "Input schema for antibody language model tools.\n\nUsed by all antibody LM tools (CurrAb, BALM-paired, BALM-unpaired,\nft-ESM, AbLang2, AntiBERTa2) for both embedding extraction and pseudo\nlog-likelihood.",
+  "properties": {
+    "extra": {
+      "additionalProperties": true,
+      "description": "Tool-specific parameters passed through to the container. Keys and values are forwarded as-is into config.json.",
+      "title": "Extra",
+      "type": "object"
+    },
+    "sequences": {
+      "description": "One or more antibody sequences to process.",
+      "items": {
+        "$ref": "#/$defs/AntibodySequence"
+      },
+      "title": "Sequences",
+      "type": "array"
+    },
+    "layer": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Model layer from which to extract embeddings. None uses the final layer. Only used in embedding mode.",
+      "title": "Layer"
+    },
+    "pooling": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Pooling strategy for per-residue embeddings (e.g., 'mean', 'cls', 'per_residue'). Only used in embedding mode.",
+      "title": "Pooling"
+    }
+  },
+  "required": ["sequences"],
+  "title": "AntibodyInput",
+  "type": "object"
+}
