@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 from starlette.middleware.sessions import SessionMiddleware
 
 from fold_at_scripps.api.admin import router as admin_router
@@ -55,7 +57,23 @@ def create_app() -> FastAPI:
     app.include_router(tools_router)
     app.include_router(runs_router)
     app.include_router(admin_router)
+    _mount_spa(app, Path(settings.frontend_dist))
     return app
+
+
+def _mount_spa(app: FastAPI, dist: Path) -> None:
+    """Serve the built SPA: real files, else index.html (client-side routing)."""
+    if not dist.is_dir():
+        return
+    index_file = dist / "index.html"
+    dist_root = dist.resolve()
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def spa(full_path: str) -> FileResponse:
+        candidate = (dist / full_path).resolve()
+        if full_path and candidate.is_file() and dist_root in candidate.parents:
+            return FileResponse(candidate)
+        return FileResponse(index_file)
 
 
 app = create_app()

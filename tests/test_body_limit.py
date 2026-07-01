@@ -30,6 +30,9 @@ async def _passthrough(_request: Request) -> Response:
 def _client(monkeypatch, max_bytes: int) -> AsyncClient:
     monkeypatch.setenv("FOLD_SECRET_KEY", "a-real-long-secret")
     monkeypatch.setenv("FOLD_MAX_UPLOAD_BYTES", str(max_bytes))
+    # Keep the SPA catch-all unmounted so an unknown route is a genuine 404, not
+    # the GET-only SPA fallback (which would answer POST /nope with 405).
+    monkeypatch.setenv("FOLD_FRONTEND_DIST", "does-not-exist")
     get_settings.cache_clear()
     return AsyncClient(transport=ASGITransport(app=create_app()), base_url="http://test")
 
