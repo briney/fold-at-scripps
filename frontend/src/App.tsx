@@ -4,11 +4,11 @@ import { Navigate, Route, Routes } from "react-router-dom";
 
 import AppShell from "@/components/AppShell";
 import RequireAuth from "@/components/RequireAuth";
+import LoginPage from "@/pages/LoginPage";
+import RegisterPage from "@/pages/RegisterPage";
+import ResetPasswordPage from "@/pages/ResetPasswordPage";
 
 // Placeholder pages; replaced by real pages in later tasks.
-const LoginPage = (): JSX.Element => <h1>Log in</h1>;
-const RegisterPage = (): JSX.Element => <h1>Register</h1>;
-const ResetPasswordPage = (): JSX.Element => <h1>Reset password</h1>;
 const ToolsPage = (): JSX.Element => <h1>Tools</h1>;
 const ToolDetailPage = (): JSX.Element => <h1>Tool</h1>;
 const RunsPage = (): JSX.Element => <h1>Runs</h1>;
