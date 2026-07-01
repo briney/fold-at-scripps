@@ -15,10 +15,14 @@ from fold_at_scripps.admin.access import (
     list_allowed_emails,
     remove_allowed_email,
 )
+from fold_at_scripps.admin.catalog import ToolNotFound, set_tool_enabled, trigger_sync
 from fold_at_scripps.admin.passwords import create_password_reset
 from fold_at_scripps.admin.settings import update_settings
 from fold_at_scripps.admin.users import UserNotFound, get_user, list_users, update_user
 from fold_at_scripps.auth.dependencies import require_admin
+from fold_at_scripps.catalog.autobio_source import get_tool_source
+from fold_at_scripps.catalog.service import list_all_tools
+from fold_at_scripps.catalog.sources import ToolSource
 from fold_at_scripps.db import get_session
 from fold_at_scripps.models import User
 from fold_at_scripps.schemas.admin import (
@@ -26,9 +30,12 @@ from fold_at_scripps.schemas.admin import (
     AdminUserUpdate,
     AllowedEmailCreate,
     AllowedEmailRead,
+    CatalogSyncResult,
     PasswordResetResponse,
     SystemSettingsRead,
     SystemSettingsUpdate,
+    ToolAdminRead,
+    ToolEnabledUpdate,
 )
 from fold_at_scripps.system_settings import get_system_settings
 
@@ -134,3 +141,35 @@ async def admin_update_settings(
     return await update_settings(
         session, actor=actor, changes=payload.model_dump(exclude_unset=True)
     )
+
+
+@router.get("/tools", response_model=list[ToolAdminRead])
+async def admin_list_tools(session: AsyncSession = Depends(get_session)) -> Any:
+    """List all tools, including disabled ones."""
+    return await list_all_tools(session)
+
+
+@router.patch("/tools/{tool_id}", response_model=ToolAdminRead)
+async def admin_set_tool_enabled(
+    tool_id: uuid.UUID,
+    payload: ToolEnabledUpdate,
+    session: AsyncSession = Depends(get_session),
+    actor: User = Depends(require_admin),
+) -> Any:
+    """Enable or disable a tool."""
+    try:
+        return await set_tool_enabled(
+            session, actor=actor, tool_id=tool_id, enabled=payload.enabled
+        )
+    except ToolNotFound as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.post("/catalog/sync", response_model=CatalogSyncResult)
+async def admin_sync_catalog(
+    session: AsyncSession = Depends(get_session),
+    actor: User = Depends(require_admin),
+    source: ToolSource = Depends(get_tool_source),
+) -> Any:
+    """Trigger a catalog sync from the configured tool source."""
+    return await trigger_sync(session, actor=actor, source=source)

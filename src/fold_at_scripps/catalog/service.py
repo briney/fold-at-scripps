@@ -71,3 +71,9 @@ async def get_enabled_tool(session: AsyncSession, tool_id: uuid.UUID) -> Tool | 
     if tool is None or not tool.enabled:
         return None
     return tool
+
+
+async def list_all_tools(session: AsyncSession) -> list[Tool]:
+    """Return every tool (enabled or not), ordered by name then version."""
+    stmt = select(Tool).order_by(Tool.name, Tool.version)
+    return list((await session.execute(stmt)).scalars().all())

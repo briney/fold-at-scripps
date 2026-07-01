@@ -73,3 +73,33 @@ class SystemSettingsUpdate(BaseModel):
     maintenance_mode: bool | None = None
     standard_max_concurrent_runs: int | None = Field(default=None, ge=0)
     power_max_concurrent_runs: int | None = Field(default=None, ge=0)
+
+
+class ToolAdminRead(BaseModel):
+    """Full tool representation for admin views (includes disabled tools)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    version: str
+    category: str
+    enabled: bool
+    gpu_count: int
+    description: str | None
+    image_tag: str | None
+    default_timeout: int | None
+    supports_batch: bool
+
+
+class ToolEnabledUpdate(BaseModel):
+    """Toggle a tool's enabled flag."""
+
+    enabled: bool
+
+
+class CatalogSyncResult(BaseModel):
+    """Result of a catalog sync."""
+
+    added: int
+    updated: int

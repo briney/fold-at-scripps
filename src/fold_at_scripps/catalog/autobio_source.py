@@ -6,7 +6,7 @@ import json
 import subprocess
 from typing import Any
 
-from fold_at_scripps.catalog.sources import ToolRecord
+from fold_at_scripps.catalog.sources import ToolRecord, ToolSource
 
 
 def parse_tool_names(payload: list[dict[str, Any]]) -> list[str]:
@@ -51,3 +51,8 @@ class AutobioToolSource:
         """List tools, then fetch each tool's full info, into ToolRecords."""
         names = parse_tool_names(self._run_json("list"))
         return [parse_tool_info(self._run_json("info", name)) for name in names]
+
+
+def get_tool_source() -> ToolSource:
+    """FastAPI dependency returning the catalog's tool source (overridable in tests)."""
+    return AutobioToolSource()
