@@ -6,7 +6,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from fold_at_scripps.foldapp import context, envfile, preflight
+from fold_at_scripps.foldapp import context, envfile, preflight, service
 from fold_at_scripps.foldapp import install as install_mod
 
 app = typer.Typer(help="fold@Scripps operator CLI (install, deploy, operate, upgrade).")
@@ -98,6 +98,68 @@ def install(dry_run: bool = typer.Option(False, "--dry-run")) -> None:
 def deploy(dry_run: bool = typer.Option(False, "--dry-run")) -> None:
     """Converge the running system to the current checkout."""
     install_mod.deploy(context.resolve_paths(), dry_run=dry_run)
+
+
+def _api_healthy(port: int = 8000, timeout: float = 2.0) -> bool:
+    """True if GET /health returns 200 (stdlib only)."""
+    import urllib.error
+    import urllib.request
+
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=timeout) as resp:
+            return resp.status == 200
+    except (urllib.error.URLError, OSError):
+        return False
+
+
+@app.command()
+def status() -> None:
+    """Show service, health, and version status."""
+    from fold_at_scripps.foldapp.shell import run
+
+    paths = context.resolve_paths()
+    table = Table("Component", "State")
+    for _kind, unit in service.UNIT_NAMES.items():
+        state = "active" if service.is_active(unit) else "inactive"
+        table.add_row(unit, f"[green]{state}[/]" if state == "active" else f"[red]{state}[/]")
+    table.add_row("api /health", "ok" if _api_healthy() else "unreachable")
+    result = run(["git", "rev-parse", "--short", "HEAD"], cwd=paths.app_dir, check=False)
+    table.add_row("git ref", result.stdout.strip() or "unknown")
+    console.print(table)
+
+
+@app.command()
+def start(target: str = typer.Argument("all")) -> None:
+    """Start api|scheduler|all."""
+    service.systemctl("start", target)
+
+
+@app.command()
+def stop(target: str = typer.Argument("all")) -> None:
+    """Stop api|scheduler|all."""
+    service.systemctl("stop", target)
+
+
+@app.command()
+def restart(target: str = typer.Argument("all")) -> None:
+    """Restart api|scheduler|all."""
+    service.systemctl("restart", target)
+
+
+@app.command()
+def logs(
+    target: str = typer.Argument("all"),
+    follow: bool = typer.Option(False, "-f", "--follow"),
+) -> None:
+    """Tail journald logs for api|scheduler|all."""
+    service.journal(target, follow=follow)
+
+
+@app.callback(invoke_without_command=True)
+def _default(ctx: typer.Context) -> None:
+    """Show status when run with no subcommand."""
+    if ctx.invoked_subcommand is None:
+        status()
 
 
 def main() -> None:
