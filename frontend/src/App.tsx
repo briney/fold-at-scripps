@@ -8,10 +8,10 @@ import CatalogPage from "@/pages/CatalogPage";
 import LoginPage from "@/pages/LoginPage";
 import RegisterPage from "@/pages/RegisterPage";
 import ResetPasswordPage from "@/pages/ResetPasswordPage";
+import RunsPage from "@/pages/RunsPage";
 import SubmitPage from "@/pages/SubmitPage";
 
-// Placeholder pages; replaced by real pages in later tasks.
-const RunsPage = (): JSX.Element => <h1>Runs</h1>;
+// Placeholder page; replaced by the real page in a later task.
 const RunDetailPage = (): JSX.Element => <h1>Run</h1>;
 
 export default function App(): JSX.Element {
