@@ -7,6 +7,7 @@ from rich.console import Console
 from rich.table import Table
 
 from fold_at_scripps.foldapp import context, envfile, preflight
+from fold_at_scripps.foldapp import install as install_mod
 
 app = typer.Typer(help="fold@Scripps operator CLI (install, deploy, operate, upgrade).")
 config_app = typer.Typer(help="Configuration (.env) management.")
@@ -80,6 +81,23 @@ def scheduler() -> None:
     from fold_at_scripps.foldapp.run import scheduler as _scheduler
 
     _scheduler()
+
+
+@app.command()
+def install(dry_run: bool = typer.Option(False, "--dry-run")) -> None:
+    """First-time setup: scaffold, migrate, build, enable + start services."""
+    paths = context.resolve_paths()
+    results = preflight.run_checks(paths)
+    if preflight.has_failures(results):
+        console.print("[red]preflight failed[/]; run `foldapp doctor` for details")
+        raise typer.Exit(code=1)
+    install_mod.deploy(paths, dry_run=dry_run, first_run=True)
+
+
+@app.command()
+def deploy(dry_run: bool = typer.Option(False, "--dry-run")) -> None:
+    """Converge the running system to the current checkout."""
+    install_mod.deploy(context.resolve_paths(), dry_run=dry_run)
 
 
 def main() -> None:
