@@ -6896,3 +6896,7 @@ Approved, draft Plan 10
 **Gaps closed while drafting:** (a) the secret guard would explode the test suite at import (module-level `app = create_app()`) — solved by having `tests/conftest.py` set a non-dev `FOLD_SECRET_KEY` at collection; (b) the SPA catch-all must serve real files (favicon/assets), not only `index.html` — added a file-check + traversal guard; (c) flagged a test-path collision (an unknown `/runs/...` path would hit `/runs/{id}` + DB — use `/dashboard/x`). One minor note: `docs/DEPLOYMENT.md` is specified as a section-by-section outline with concrete copy-paste commands rather than verbatim prose (it's documentation, not code).</result>
 <usage><subagent_tokens>868373</subagent_tokens><tool_uses>1</tool_uses><duration_ms>385261</duration_ms></usage>
 </task-notification>
+
+---
+
+same handoff
