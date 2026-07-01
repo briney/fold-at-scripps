@@ -55,3 +55,42 @@ def test_input_path_rejects_traversal(tmp_path: Path) -> None:
     run_id = uuid.uuid4()
     with pytest.raises(ValueError):
         storage.input_path(run_id, "../config/config.json")
+
+
+def test_write_input_writes_bytes_and_returns_relative_path(tmp_path: Path) -> None:
+    storage = LocalStorage(tmp_path)
+    run_id = uuid.uuid4()
+    storage.create_run_dir(run_id)
+
+    rel = storage.write_input(run_id, "seqs.fasta", b">a\nACDE\n")
+
+    assert rel == "inputs/seqs.fasta"
+    assert storage.input_path(run_id, "seqs.fasta").read_bytes() == b">a\nACDE\n"
+
+
+def test_write_input_creates_missing_inputs_dir(tmp_path: Path) -> None:
+    storage = LocalStorage(tmp_path)
+    run_id = uuid.uuid4()  # note: create_run_dir NOT called
+
+    storage.write_input(run_id, "x.txt", b"hi")
+
+    assert storage.input_path(run_id, "x.txt").read_bytes() == b"hi"
+
+
+def test_write_input_rejects_traversal(tmp_path: Path) -> None:
+    storage = LocalStorage(tmp_path)
+    run_id = uuid.uuid4()
+    with pytest.raises(ValueError):
+        storage.write_input(run_id, "../escape.txt", b"nope")
+
+
+def test_remove_run_dir_deletes_tree_and_is_idempotent(tmp_path: Path) -> None:
+    storage = LocalStorage(tmp_path)
+    run_id = uuid.uuid4()
+    storage.create_run_dir(run_id)
+    storage.write_input(run_id, "a.txt", b"a")
+
+    storage.remove_run_dir(run_id)
+    assert not storage.run_root(run_id).exists()
+
+    storage.remove_run_dir(run_id)  # idempotent: no error when already gone
