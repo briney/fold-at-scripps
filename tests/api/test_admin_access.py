@@ -6,11 +6,12 @@ import uuid
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fold_at_scripps.auth.passwords import hash_password
 from fold_at_scripps.main import create_app
-from fold_at_scripps.models import AllowedEmail, User, UserRole, UserStatus
+from fold_at_scripps.models import AllowedEmail, AuditLog, User, UserRole, UserStatus
 
 pytestmark = pytest.mark.integration
 
@@ -63,3 +64,21 @@ async def test_remove_unknown_allowed_email_404(db_session: AsyncSession):
         await _login_admin(client, db_session)
         resp = await client.delete(f"/admin/allowed-emails/{uuid.uuid4()}")
         assert resp.status_code == 404
+
+
+async def test_add_long_email_audits_with_row_id_not_email(db_session: AsyncSession):
+    """A >64-char email must not overflow AuditLog.target_id (String(64))."""
+    long_email = ("a" * 60) + "@scripps.edu"
+    assert len(long_email) > 64
+    async with _client() as client:
+        await _login_admin(client, db_session)
+        created = await client.post("/admin/allowed-emails", json={"email": long_email})
+        assert created.status_code == 201
+        allowed_id = created.json()["id"]
+
+        audit = await db_session.scalar(select(AuditLog).where(AuditLog.action == "allowlist.add"))
+        assert audit is not None
+        assert audit.target_id == str(allowed_id)
+        assert uuid.UUID(audit.target_id) == uuid.UUID(allowed_id)
+        assert audit.details is not None
+        assert audit.details["email"] == long_email

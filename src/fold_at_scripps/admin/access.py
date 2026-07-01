@@ -36,12 +36,14 @@ async def add_allowed_email(session: AsyncSession, *, actor: User, email: str) -
         raise EmailAlreadyAllowed(f"{email} is already on the allowlist")
     entry = AllowedEmail(email=email, invited_by_id=actor.id)
     session.add(entry)
+    await session.flush()
     await record_audit(
         session,
         actor=actor,
         action="allowlist.add",
         target_type="allowed_email",
-        target_id=email,
+        target_id=str(entry.id),
+        details={"email": email},
     )
     await session.commit()
     await session.refresh(entry)
@@ -60,12 +62,14 @@ async def remove_allowed_email(
     if entry is None:
         raise AllowedEmailNotFound(f"Allowed email {allowed_id} not found")
     email = entry.email
+    entry_id = entry.id
     await session.delete(entry)
     await record_audit(
         session,
         actor=actor,
         action="allowlist.remove",
         target_type="allowed_email",
-        target_id=email,
+        target_id=str(entry_id),
+        details={"email": email},
     )
     await session.commit()
