@@ -68,9 +68,10 @@ async def submit_run(
     inputs = inputs or ()
     validate_params(params, tool.input_schema)
 
-    # Ensure the SystemSettings singleton exists before locking: on first-ever access
-    # get_system_settings() would otherwise commit to persist its defaults, which
-    # would release the row lock below before the quota check runs.
+    # Resolve/create the SystemSettings singleton before taking the user-row lock: on a
+    # cold DB its creation can block on the singleton PK when callers race, so doing it
+    # here keeps that out of the FOR UPDATE critical section. get_system_settings creates
+    # the row inside a SAVEPOINT, so it never releases this transaction's locks.
     await get_system_settings(session)
 
     # Serialize this user's concurrent submissions so the quota check is atomic.
