@@ -95,15 +95,23 @@ async def soft_delete_run(session: AsyncSession, user: User, run_id: uuid.UUID) 
     return run
 
 
+class InvalidRunState(Exception):
+    """Raised when a run is not in the expected state for an operation."""
+
+
 async def execute_run(session: AsyncSession, run: Run, executor: Executor, storage: Storage) -> Run:
-    """Run a queued run via the executor, recording outputs, timing, and final status."""
+    """Execute a RUNNING run via the executor and record its outcome.
+
+    The caller (scheduler) is responsible for the QUEUED -> RUNNING transition and
+    for assigning GPUs. If the executor raises, the run is marked FAILED rather
+    than left RUNNING.
+    """
+    if run.status is not RunStatus.RUNNING:
+        raise InvalidRunState(f"execute_run requires a RUNNING run, got {run.status}")
+
     tool = await session.get(Tool, run.tool_id)
     if tool is None:  # pragma: no cover - referential integrity guarantees this
         raise ValueError(f"Run {run.id} references missing tool {run.tool_id}")
-
-    run.status = RunStatus.RUNNING
-    run.started_at = datetime.datetime.now(datetime.UTC)
-    await session.commit()
 
     request = ExecutionRequest(
         tool_name=tool.name,
@@ -114,7 +122,16 @@ async def execute_run(session: AsyncSession, run: Run, executor: Executor, stora
         gpu_ids=run.assigned_gpu_ids or [],
         timeout=tool.default_timeout,
     )
-    result = await asyncio.to_thread(executor.execute, request)
+    run.finished_at = datetime.datetime.now(datetime.UTC)
+    try:
+        result = await asyncio.to_thread(executor.execute, request)
+    except Exception as exc:  # execution boundary: never leave a run RUNNING
+        run.status = RunStatus.FAILED
+        run.error = f"executor error: {exc}"
+        run.finished_at = datetime.datetime.now(datetime.UTC)
+        await session.commit()
+        await session.refresh(run)
+        return run
 
     run.finished_at = datetime.datetime.now(datetime.UTC)
     run.wall_time_seconds = result.wall_time_seconds
