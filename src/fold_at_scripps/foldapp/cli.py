@@ -8,10 +8,13 @@ from rich.table import Table
 
 from fold_at_scripps.foldapp import context, envfile, preflight, service
 from fold_at_scripps.foldapp import install as install_mod
+from fold_at_scripps.foldapp import upgrade as upgrade_mod
 
 app = typer.Typer(help="fold@Scripps operator CLI (install, deploy, operate, upgrade).")
 config_app = typer.Typer(help="Configuration (.env) management.")
 app.add_typer(config_app, name="config")
+db_app = typer.Typer(help="Database backup/restore.")
+app.add_typer(db_app, name="db")
 console = Console()
 
 _STATUS_STYLE = {"OK": "green", "WARN": "yellow", "FAIL": "red"}
@@ -98,6 +101,62 @@ def install(dry_run: bool = typer.Option(False, "--dry-run")) -> None:
 def deploy(dry_run: bool = typer.Option(False, "--dry-run")) -> None:
     """Converge the running system to the current checkout."""
     install_mod.deploy(context.resolve_paths(), dry_run=dry_run)
+
+
+@app.command()
+def upgrade(
+    ref: str = typer.Option(None, "--ref", help="Git ref to deploy (default: pull latest)."),
+    dry_run: bool = typer.Option(False, "--dry-run"),
+) -> None:
+    """Guarded upgrade: backup + health-gate; failures stop with maintenance ON."""
+    upgrade_mod.upgrade(context.resolve_paths(), ref=ref, dry_run=dry_run)
+
+
+@app.command()
+def refresh(dry_run: bool = typer.Option(False, "--dry-run")) -> None:
+    """Rebuild frontend + sync catalog + restart (no pull/migrate)."""
+    upgrade_mod.refresh(context.resolve_paths(), dry_run=dry_run)
+
+
+@app.command()
+def rollback(
+    db: bool = typer.Option(False, "--db", help="Also restore the pre-upgrade DB snapshot."),
+    yes: bool = typer.Option(False, "--yes", help="Skip confirmation."),
+    dry_run: bool = typer.Option(False, "--dry-run"),
+) -> None:
+    """Restore the previous git ref (and optionally the DB snapshot)."""
+    if db and not yes and not typer.confirm("Restoring the DB snapshot is destructive. Continue?"):
+        raise typer.Abort()
+    upgrade_mod.rollback(context.resolve_paths(), restore_db=db, dry_run=dry_run)
+
+
+@db_app.command("dump")
+def db_dump() -> None:
+    """Write a gzipped pg_dump snapshot to the backups directory."""
+    from datetime import UTC, datetime
+
+    from fold_at_scripps.foldapp import postgres
+
+    paths = context.resolve_paths()
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    dest = postgres.dump(paths, paths.backups_dir / f"manual-{stamp}.sql.gz")
+    console.print(f"[green]dumped[/] {dest}")
+
+
+@db_app.command("restore")
+def db_restore(
+    path: str = typer.Argument(..., help="Path to a .sql.gz snapshot."),
+    yes: bool = typer.Option(False, "--yes"),
+) -> None:
+    """Restore the database from a snapshot (destructive)."""
+    from pathlib import Path
+
+    from fold_at_scripps.foldapp import postgres
+
+    if not yes and not typer.confirm("This overwrites the current database. Continue?"):
+        raise typer.Abort()
+    postgres.restore(context.resolve_paths(), Path(path))
+    console.print("[green]restored[/]")
 
 
 def _api_healthy(port: int = 8000, timeout: float = 2.0) -> bool:
