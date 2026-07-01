@@ -1,0 +1,14 @@
+[Unit]
+Description=fold@Scripps scheduler
+
+[Service]
+Type=simple
+WorkingDirectory=$app_dir
+EnvironmentFile=$env_file
+Environment=PATH=$path
+ExecStart=$uv run foldapp scheduler
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

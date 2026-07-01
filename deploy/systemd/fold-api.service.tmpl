@@ -1,0 +1,15 @@
+[Unit]
+Description=fold@Scripps API (uvicorn)
+
+[Service]
+Type=simple
+WorkingDirectory=$app_dir
+EnvironmentFile=$env_file
+Environment=PATH=$path
+ExecStartPre=$uv run alembic upgrade head
+ExecStart=$uv run foldapp serve --port $port
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
