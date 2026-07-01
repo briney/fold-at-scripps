@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     secret_key: str = "dev-insecure-secret-change-me"
     session_https_only: bool = False
     storage_root: str = "./data"
+    gpu_count: int = 8
+    scheduler_poll_interval: float = 2.0
 
 
 @lru_cache
