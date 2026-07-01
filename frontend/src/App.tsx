@@ -18,11 +18,9 @@ import AdminRunDetailPage from "@/pages/admin/AdminRunDetailPage";
 import AdminRunsPage from "@/pages/admin/AdminRunsPage";
 import AdminCatalogPage from "@/pages/admin/CatalogPage";
 import AllowlistPage from "@/pages/admin/AllowlistPage";
+import AuditLogPage from "@/pages/admin/AuditLogPage";
 import SettingsPage from "@/pages/admin/SettingsPage";
 import UsersPage from "@/pages/admin/UsersPage";
-
-// Placeholder admin screens — replaced by Task 8.
-const AuditLogPage = (): JSX.Element => <h1>Audit Log</h1>;
 
 export default function App(): JSX.Element {
   return (
