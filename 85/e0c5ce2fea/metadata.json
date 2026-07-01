@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.7.8",
+  "checkpoint_version": "branch-v1",
+  "checkpoint_id": "85e0c5ce2fea",
+  "strategy": "manual-commit",
+  "branch": "feature/scheduler",
+  "checkpoints_count": 15,
+  "files_touched": [
+    "src/fold_at_scripps/scheduler/service.py"
+  ],
+  "sessions": [
+    {
+      "metadata": "/85/e0c5ce2fea/0/metadata.json",
+      "transcript": "/85/e0c5ce2fea/0/full.jsonl",
+      "compact_transcript": "/85/e0c5ce2fea/0/transcript.jsonl",
+      "content_hash": "/85/e0c5ce2fea/0/content_hash.txt",
+      "prompt": "/85/e0c5ce2fea/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 16576,
+    "cache_creation_tokens": 980981,
+    "cache_read_tokens": 291245265,
+    "output_tokens": 745979,
+    "api_call_count": 531
+  }
+}
