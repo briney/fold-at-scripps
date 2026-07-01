@@ -9,6 +9,10 @@ Type=simple
 User=fold
 WorkingDirectory=/opt/fold-at-scripps
 EnvironmentFile=/etc/fold/fold.env
+# systemd uses a minimal PATH. Include uv's install dir (fold user's ~/.local/bin
+# by default) AND the directory containing the `autobio` CLI (the scheduler shells
+# out to it — e.g. your conda/miniforge env's bin). Append it below.
+Environment=PATH=/home/fold/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ExecStart=/usr/bin/env uv run fold-scheduler
 Restart=on-failure
 RestartSec=5

@@ -152,3 +152,29 @@ make build-frontend                       # rebuild the SPA
 sudo systemctl restart fold-api           # runs migrations, then restarts uvicorn
 sudo systemctl restart fold-scheduler
 ```
+
+## Troubleshooting & operational notes
+
+- **`uv`/`autobio` "not found" at start.** systemd runs services with a minimal
+  `PATH` that does **not** include the fold user's login-shell `PATH`. Both units
+  set `Environment=PATH=…` including `/home/fold/.local/bin` (uv's default install
+  dir). If you installed `uv` elsewhere, or the `autobio` CLI lives in a
+  conda/miniforge env, edit the `Environment=PATH=` line in the unit files to
+  include those directories (the scheduler in particular must be able to find
+  `autobio`). Then `sudo systemctl daemon-reload && sudo systemctl restart …`.
+
+- **Failed starts right after a host reboot are expected.** The units order after
+  `docker.service`, not after the Postgres *container* is accepting connections,
+  so on boot the API's migration step (and the scheduler's DB access) may fail
+  once or twice until Postgres is ready. `Restart=on-failure` (5 s) recovers
+  automatically; the units settle within a few seconds. To avoid the noise you
+  can add an `ExecStartPre` that waits for `pg_isready`.
+
+- **Restart the scheduler after restarting Postgres.** The single-scheduler
+  guarantee uses a *session-scoped* Postgres advisory lock held on one dedicated
+  connection. If the Postgres container is restarted while the scheduler is
+  running, that connection drops and the server-side lock is released, but the
+  running scheduler does not re-acquire it. Run `sudo systemctl restart
+  fold-scheduler` after any Postgres restart so it takes the lock again. (On a
+  single-node deployment with one scheduler unit this is only a concern if you
+  also start a second scheduler during that window.)
