@@ -5,7 +5,7 @@ from __future__ import annotations
 import datetime
 import uuid
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from fold_at_scripps.models import UserRole, UserStatus, UserTier
 
@@ -54,3 +54,22 @@ class PasswordResetResponse(BaseModel):
 
     token: str
     expires_at: datetime.datetime
+
+
+class SystemSettingsRead(BaseModel):
+    """Editable operational settings."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    maintenance_mode: bool
+    standard_max_concurrent_runs: int
+    power_max_concurrent_runs: int
+    updated_at: datetime.datetime
+
+
+class SystemSettingsUpdate(BaseModel):
+    """Partial update to the operational settings."""
+
+    maintenance_mode: bool | None = None
+    standard_max_concurrent_runs: int | None = Field(default=None, ge=0)
+    power_max_concurrent_runs: int | None = Field(default=None, ge=0)

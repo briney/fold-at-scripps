@@ -16,6 +16,7 @@ from fold_at_scripps.admin.access import (
     remove_allowed_email,
 )
 from fold_at_scripps.admin.passwords import create_password_reset
+from fold_at_scripps.admin.settings import update_settings
 from fold_at_scripps.admin.users import UserNotFound, get_user, list_users, update_user
 from fold_at_scripps.auth.dependencies import require_admin
 from fold_at_scripps.db import get_session
@@ -26,7 +27,10 @@ from fold_at_scripps.schemas.admin import (
     AllowedEmailCreate,
     AllowedEmailRead,
     PasswordResetResponse,
+    SystemSettingsRead,
+    SystemSettingsUpdate,
 )
+from fold_at_scripps.system_settings import get_system_settings
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin)])
 
@@ -112,3 +116,21 @@ async def admin_create_password_reset(
     except UserNotFound as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     return PasswordResetResponse(token=token, expires_at=row.expires_at)
+
+
+@router.get("/settings", response_model=SystemSettingsRead)
+async def admin_get_settings(session: AsyncSession = Depends(get_session)) -> Any:
+    """Return the current operational settings."""
+    return await get_system_settings(session)
+
+
+@router.patch("/settings", response_model=SystemSettingsRead)
+async def admin_update_settings(
+    payload: SystemSettingsUpdate,
+    session: AsyncSession = Depends(get_session),
+    actor: User = Depends(require_admin),
+) -> Any:
+    """Update operational settings (maintenance mode, quota caps)."""
+    return await update_settings(
+        session, actor=actor, changes=payload.model_dump(exclude_unset=True)
+    )
