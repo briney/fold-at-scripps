@@ -1,0 +1,160 @@
+{
+  "cli_version": "0.7.8",
+  "checkpoint_id": "d60c14de44e1",
+  "session_id": "81efea97-4441-45df-9723-649c2ecd0b06",
+  "strategy": "manual-commit",
+  "created_at": "2026-07-01T05:18:43.531205299Z",
+  "branch": "feature/user-facing-api",
+  "checkpoints_count": 8,
+  "save_step_count": 1,
+  "files_touched": [],
+  "agent": "Claude Code",
+  "model": "claude-opus-4-8[1m]",
+  "turn_id": "215e97a2d923",
+  "token_usage": {
+    "input_tokens": 50839,
+    "cache_creation_tokens": 1370465,
+    "cache_read_tokens": 314622745,
+    "output_tokens": 888969,
+    "api_call_count": 626
+  },
+  "skill_events_version": 1,
+  "skill_events": [
+    {
+      "id": "claude-skill-toolu_01Vo4QMR6GdrvgNqC7VftdCo",
+      "event_type": "tool_invocation",
+      "skill": {
+        "name": "superpowers:brainstorming"
+      },
+      "source": {
+        "agent": "claude-code",
+        "signal": "skill_tool_use",
+        "confidence": "explicit"
+      },
+      "turn_id": "215e97a2d923",
+      "transcript_anchor": {
+        "unit": "line",
+        "start": 19,
+        "end": 20,
+        "entry_ids": [
+          "1e45b4f2-17e5-4957-98e7-c67613a11c0d"
+        ],
+        "tool_use_id": "toolu_01Vo4QMR6GdrvgNqC7VftdCo"
+      },
+      "native": {
+        "tool_name": "Skill",
+        "tool_use_id": "toolu_01Vo4QMR6GdrvgNqC7VftdCo"
+      },
+      "collapse": {
+        "target": "tool_pair",
+        "label": "Skill: superpowers:brainstorming",
+        "default_collapsed": true
+      }
+    },
+    {
+      "id": "claude-skill-toolu_01F7Ma1oJ1PUrpf6w42R21a8",
+      "event_type": "tool_invocation",
+      "skill": {
+        "name": "superpowers:writing-plans"
+      },
+      "source": {
+        "agent": "claude-code",
+        "signal": "skill_tool_use",
+        "confidence": "explicit"
+      },
+      "turn_id": "215e97a2d923",
+      "transcript_anchor": {
+        "unit": "line",
+        "start": 316,
+        "end": 317,
+        "entry_ids": [
+          "6dc4cac2-c862-4c9a-90bc-e246b85757e9"
+        ],
+        "tool_use_id": "toolu_01F7Ma1oJ1PUrpf6w42R21a8"
+      },
+      "native": {
+        "tool_name": "Skill",
+        "tool_use_id": "toolu_01F7Ma1oJ1PUrpf6w42R21a8"
+      },
+      "collapse": {
+        "target": "tool_pair",
+        "label": "Skill: superpowers:writing-plans",
+        "default_collapsed": true
+      }
+    },
+    {
+      "id": "claude-skill-toolu_011AAUgJWGoVJPkQpZgnfUcw",
+      "event_type": "tool_invocation",
+      "skill": {
+        "name": "superpowers:subagent-driven-development"
+      },
+      "source": {
+        "agent": "claude-code",
+        "signal": "skill_tool_use",
+        "confidence": "explicit"
+      },
+      "turn_id": "215e97a2d923",
+      "transcript_anchor": {
+        "unit": "line",
+        "start": 352,
+        "end": 353,
+        "entry_ids": [
+          "e020c8b7-e642-4f5b-9efd-23707fdaece5"
+        ],
+        "tool_use_id": "toolu_011AAUgJWGoVJPkQpZgnfUcw"
+      },
+      "native": {
+        "tool_name": "Skill",
+        "tool_use_id": "toolu_011AAUgJWGoVJPkQpZgnfUcw"
+      },
+      "collapse": {
+        "target": "tool_pair",
+        "label": "Skill: superpowers:subagent-driven-development",
+        "default_collapsed": true
+      }
+    },
+    {
+      "id": "claude-skill-toolu_01FjfDsbaGZ71U1S69Jji6hv",
+      "event_type": "tool_invocation",
+      "skill": {
+        "name": "superpowers:finishing-a-development-branch"
+      },
+      "source": {
+        "agent": "claude-code",
+        "signal": "skill_tool_use",
+        "confidence": "explicit"
+      },
+      "turn_id": "215e97a2d923",
+      "transcript_anchor": {
+        "unit": "line",
+        "start": 667,
+        "end": 668,
+        "entry_ids": [
+          "d9502f0a-3e22-4d4a-bd85-0d8221c8980e"
+        ],
+        "tool_use_id": "toolu_01FjfDsbaGZ71U1S69Jji6hv"
+      },
+      "native": {
+        "tool_name": "Skill",
+        "tool_use_id": "toolu_01FjfDsbaGZ71U1S69Jji6hv"
+      },
+      "collapse": {
+        "target": "tool_pair",
+        "label": "Skill: superpowers:finishing-a-development-branch",
+        "default_collapsed": true
+      }
+    }
+  ],
+  "session_metrics": {
+    "turn_count": 148
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    }
+  ]
+}
