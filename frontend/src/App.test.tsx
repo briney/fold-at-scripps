@@ -1,8 +1,9 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 
 import App from "@/App";
+import { renderWithProviders } from "@/lib/test/render";
 
-test("renders the app heading", () => {
-  render(<App />);
-  expect(screen.getByRole("heading", { name: /fold@scripps/i })).toBeInTheDocument();
+test("renders the login page on the public route", () => {
+  renderWithProviders(<App />, { route: "/login" });
+  expect(screen.getByRole("heading", { name: /log in/i })).toBeInTheDocument();
 });
