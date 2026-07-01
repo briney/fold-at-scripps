@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import re
 import secrets
 from collections.abc import Mapping
 from typing import Any
+from urllib.parse import urlsplit, urlunsplit
 
 import rich
 
@@ -45,11 +45,23 @@ def scaffold_env(paths: FoldappPaths, *, dry_run: bool = False) -> bool:
     return True
 
 
+def _redact_db_url(url: str) -> str:
+    """Mask the password in a database URL, preserving the rest."""
+    parts = urlsplit(url)
+    if parts.password is None:
+        return url
+    host = parts.hostname or ""
+    netloc = f"{parts.username or ''}:***@{host}"
+    if parts.port:
+        netloc += f":{parts.port}"
+    return urlunsplit((parts.scheme, netloc, parts.path, parts.query, parts.fragment))
+
+
 def redact_settings(values: Mapping[str, Any]) -> dict[str, Any]:
     """Return a copy with the secret key and any DB password masked."""
     out = dict(values)
     if "secret_key" in out:
         out["secret_key"] = "***"
     if "database_url" in out and isinstance(out["database_url"], str):
-        out["database_url"] = re.sub(r"://([^:/@]+):[^@]*@", r"://\1:***@", out["database_url"])
+        out["database_url"] = _redact_db_url(out["database_url"])
     return out

@@ -41,3 +41,10 @@ def test_redact_masks_secret_and_password():
     assert out["secret_key"] == "***"
     assert "pw" not in out["database_url"]
     assert out["gpu_count"] == 8
+
+
+def test_redact_masks_password_containing_at_symbol():
+    out = redact_settings({"database_url": "postgresql+asyncpg://fold:p@ss@localhost:5432/db"})
+    assert "ss" not in out["database_url"]
+    assert "p@ss" not in out["database_url"]
+    assert out["database_url"].startswith("postgresql+asyncpg://fold:***@localhost:5432/db")
