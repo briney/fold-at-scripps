@@ -20,6 +20,7 @@ dependencies = [
 
 [project.scripts]
 fold-admin = "fold_at_scripps.cli:main"
+fold-scheduler = "fold_at_scripps.scheduler.main:main"
 
 [dependency-groups]
 dev = [
