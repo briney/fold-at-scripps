@@ -1,15 +1,16 @@
-FROM python:3.11-slim
+# fold@Scripps frontend build.
+#
+# The backend runs on the host (uv + systemd); only the SPA is built here so
+# the host needs no Node. Extract the built assets with:
+#   docker build --target dist --output type=local,dest=frontend/dist .
+# which writes index.html + assets/ into ./frontend/dist for FastAPI to serve.
+FROM node:20-slim AS frontend-build
+WORKDIR /build
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build
 
-ENV PYTHONUNBUFFERED=1 \
-    UV_COMPILE_BYTECODE=1 \
-    UV_LINK_MODE=copy
-
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
-
-WORKDIR /app
-COPY pyproject.toml uv.lock ./
-COPY src ./src
-RUN uv sync --frozen
-
-EXPOSE 8000
-CMD ["uv", "run", "uvicorn", "fold_at_scripps.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Export-only stage: its filesystem is exactly the built dist.
+FROM scratch AS dist
+COPY --from=frontend-build /build/dist /

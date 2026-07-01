@@ -1,0 +1,17 @@
+# deploy/fold-scheduler.service
+[Unit]
+Description=fold@Scripps scheduler
+After=network-online.target docker.service fold-api.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=fold
+WorkingDirectory=/opt/fold-at-scripps
+EnvironmentFile=/etc/fold/fold.env
+ExecStart=/usr/bin/env uv run fold-scheduler
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

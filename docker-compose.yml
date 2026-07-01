@@ -9,23 +9,12 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U fold -d fold_at_scripps"]
       interval: 5s
       timeout: 3s
       retries: 10
-
-  api:
-    build: .
-    environment:
-      FOLD_DATABASE_URL: postgresql+asyncpg://fold:fold@postgres:5432/fold_at_scripps
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./src:/app/src
-    depends_on:
-      postgres:
-        condition: service_healthy
 
 volumes:
   pgdata:
