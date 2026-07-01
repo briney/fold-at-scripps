@@ -14,9 +14,18 @@ from fold_at_scripps.catalog.service import get_enabled_tool
 from fold_at_scripps.db import get_session
 from fold_at_scripps.models import User
 from fold_at_scripps.runs.quota import QuotaExceeded
-from fold_at_scripps.runs.service import InputFile, get_run, submit_run
+from fold_at_scripps.runs.service import (
+    InputFile,
+    RunNotCancelable,
+    RunNotFound,
+    cancel_run,
+    get_run,
+    list_runs,
+    soft_delete_run,
+    submit_run,
+)
 from fold_at_scripps.runs.validation import InvalidParams
-from fold_at_scripps.schemas.runs import RunRead
+from fold_at_scripps.schemas.runs import RunRead, RunSummary
 from fold_at_scripps.storage import Storage, get_storage
 
 router = APIRouter(prefix="/runs", tags=["runs"])
@@ -65,3 +74,52 @@ async def submit(
     except QuotaExceeded as exc:
         raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(exc)) from exc
     return await get_run(session, user, run.id)
+
+
+@router.get("", response_model=list[RunSummary])
+async def list_user_runs(
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> Any:
+    """List the current user's non-hidden runs, newest first."""
+    return await list_runs(session, user)
+
+
+@router.get("/{run_id}", response_model=RunRead)
+async def get_user_run(
+    run_id: uuid.UUID,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> Any:
+    """Return one of the current user's runs, with artifacts."""
+    run = await get_run(session, user, run_id)
+    if run is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
+    return run
+
+
+@router.post("/{run_id}/cancel", response_model=RunRead)
+async def cancel_user_run(
+    run_id: uuid.UUID,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> Any:
+    """Cancel a queued run."""
+    try:
+        return await cancel_run(session, user, run_id)
+    except RunNotFound as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except RunNotCancelable as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+
+@router.delete("/{run_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_user_run(
+    run_id: uuid.UUID,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> None:
+    """Soft-delete (hide) a run from the user's history."""
+    run = await soft_delete_run(session, user, run_id)
+    if run is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")

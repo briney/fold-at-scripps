@@ -142,3 +142,65 @@ async def test_submit_quota_exceeded_returns_429(db_session: AsyncSession) -> No
             files=[("files", ("b.pdb", b"ATOM", "chemical/x-pdb"))],
         )
         assert resp.status_code == 429
+
+
+async def _submit(client: AsyncClient, tool_id: uuid.UUID) -> dict:
+    resp = await client.post(
+        "/runs",
+        data={"tool_id": str(tool_id), "params": json.dumps({"structure_path": "b.pdb"})},
+        files=[("files", ("b.pdb", b"ATOM", "chemical/x-pdb"))],
+    )
+    assert resp.status_code == 201
+    return resp.json()
+
+
+async def test_list_runs_returns_users_runs(db_session: AsyncSession) -> None:
+    tool = await _seed_tool(db_session)
+    async with _client() as client:
+        await _login(client, db_session)
+        await _submit(client, tool.id)
+        resp = await client.get("/runs")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert len(body) == 1
+        assert body[0]["tool"]["name"] == "antifold"
+        assert "artifacts" not in body[0]  # summary shape
+
+
+async def test_get_run_detail_and_404(db_session: AsyncSession) -> None:
+    tool = await _seed_tool(db_session)
+    async with _client() as client:
+        await _login(client, db_session)
+        run = await _submit(client, tool.id)
+        ok = await client.get(f"/runs/{run['id']}")
+        assert ok.status_code == 200
+        assert ok.json()["id"] == run["id"]
+        missing = await client.get(f"/runs/{uuid.uuid4()}")
+        assert missing.status_code == 404
+
+
+async def test_cancel_endpoint_200_404_409(db_session: AsyncSession) -> None:
+    tool = await _seed_tool(db_session)
+    async with _client() as client:
+        await _login(client, db_session)
+        run = await _submit(client, tool.id)
+        ok = await client.post(f"/runs/{run['id']}/cancel")
+        assert ok.status_code == 200
+        assert ok.json()["status"] == "canceled"
+        again = await client.post(f"/runs/{run['id']}/cancel")  # now CANCELED, not queued
+        assert again.status_code == 409
+        missing = await client.post(f"/runs/{uuid.uuid4()}/cancel")
+        assert missing.status_code == 404
+
+
+async def test_delete_run_204_then_hidden(db_session: AsyncSession) -> None:
+    tool = await _seed_tool(db_session)
+    async with _client() as client:
+        await _login(client, db_session)
+        run = await _submit(client, tool.id)
+        deleted = await client.delete(f"/runs/{run['id']}")
+        assert deleted.status_code == 204
+        assert (await client.get("/runs")).json() == []
+        assert (await client.get(f"/runs/{run['id']}")).status_code == 404
+        missing = await client.delete(f"/runs/{uuid.uuid4()}")
+        assert missing.status_code == 404
