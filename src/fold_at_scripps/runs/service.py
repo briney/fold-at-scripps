@@ -122,7 +122,6 @@ async def execute_run(session: AsyncSession, run: Run, executor: Executor, stora
         gpu_ids=run.assigned_gpu_ids or [],
         timeout=tool.default_timeout,
     )
-    run.finished_at = datetime.datetime.now(datetime.UTC)
     try:
         result = await asyncio.to_thread(executor.execute, request)
     except Exception as exc:  # execution boundary: never leave a run RUNNING

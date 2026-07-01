@@ -64,6 +64,10 @@ async def test_execute_failure_records_error(tmp_path: Path, db_session: AsyncSe
     )
     assert result.status is RunStatus.FAILED
     assert result.error == "kaboom"
+    count = await db_session.scalar(
+        select(func.count()).select_from(Artifact).where(Artifact.run_id == run.id)
+    )
+    assert count == 0
 
 
 async def test_execute_requires_running(tmp_path: Path, db_session: AsyncSession) -> None:
