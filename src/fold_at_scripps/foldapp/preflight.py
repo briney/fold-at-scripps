@@ -111,8 +111,10 @@ def check_port_free(paths: FoldappPaths, port: int) -> CheckResult:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         free = sock.connect_ex(("127.0.0.1", port)) != 0
     return CheckResult(
-        f"port:{port}", Status.OK if free else Status.WARN,
-        "free" if free else "in use", None if free else "Ensure it is our own service",
+        f"port:{port}",
+        Status.OK if free else Status.WARN,
+        "free" if free else "in use",
+        None if free else "Ensure it is our own service",
     )
 
 
@@ -123,7 +125,8 @@ def check_env(paths: FoldappPaths) -> CheckResult:
     text = paths.env_file.read_text()
     bad = "dev-insecure-secret-change-me" in text or "CHANGE-ME" in text
     return CheckResult(
-        "env", Status.FAIL if bad else Status.OK,
+        "env",
+        Status.FAIL if bad else Status.OK,
         "dev secret in use" if bad else "present",
         "Set a real FOLD_SECRET_KEY" if bad else None,
     )
@@ -134,7 +137,9 @@ def check_linger(paths: FoldappPaths, *, runner=run) -> CheckResult:
     result = runner(["loginctl", "show-user", paths.user, "--property=Linger"], check=False)
     on = "Linger=yes" in result.stdout
     return CheckResult(
-        "linger", Status.OK if on else Status.WARN, "enabled" if on else "disabled",
+        "linger",
+        Status.OK if on else Status.WARN,
+        "enabled" if on else "disabled",
         None if on else f"Enable boot-start: sudo loginctl enable-linger {paths.user}",
     )
 
