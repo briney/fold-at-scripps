@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from starlette.middleware.sessions import SessionMiddleware
 
+from fold_at_scripps.api.admin import router as admin_router
 from fold_at_scripps.api.auth import router as auth_router
 from fold_at_scripps.api.health import router as health_router
 from fold_at_scripps.api.runs import router as runs_router
@@ -37,6 +38,7 @@ def create_app() -> FastAPI:
     app.include_router(auth_router)
     app.include_router(tools_router)
     app.include_router(runs_router)
+    app.include_router(admin_router)
     return app
 
 
