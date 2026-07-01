@@ -22,13 +22,14 @@ export function useRuns(): UseQueryResult<RunSummary[]> {
   });
 }
 
-/** Cancel a queued run, refreshing the runs list on success. */
+/** Cancel a queued run, refreshing the runs list and that run's detail on success. */
 export function useCancelRun(): UseMutationResult<RunRead, unknown, string> {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => cancelRun(id),
-    onSuccess: () => {
+    onSuccess: (_data, id) => {
       void queryClient.invalidateQueries({ queryKey: ["runs"] });
+      void queryClient.invalidateQueries({ queryKey: ["run", id] });
     },
   });
 }
