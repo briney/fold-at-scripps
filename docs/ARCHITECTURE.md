@@ -45,44 +45,54 @@ model: **the scheduler must launch Docker containers and assign specific GPUs**
 The API does not — it only touches Postgres and the filesystem.
 
 ```
-                            ┌──────────────────────────── Docker Compose ───────────────────────────┐
-                            │                                                                        │
-   Browser ─── HTTPS ───────┼──▶  nginx ──▶  SPA static assets                                       │
-      │                     │                                                                        │
-      └──── JSON / cookie ──┼──▶  FastAPI (API)  ──┐                                                 │
-                            │         │            │                                                 │
-                            │         ▼            ▼                                                 │
-                            │   Service layer   PostgreSQL  ◀──────────────┐                         │
-                            │   (transport-                 │              │                         │
-                            │    agnostic)                  │              │                         │
-                            └───────────────────────────────┼──────────────┼─────────────────────────┘
-                                                            │              │
-                                          claims runs via   │              │  reads/writes runs,
-                                       FOR UPDATE SKIP LOCKED│              │  artifacts, usage
-                                                            ▼              │
-                              ┌──── host process (systemd) ──────────────────────────────────┐
-                              │   Scheduler  ──▶  Executor (v1: local autobio)                │
-                              │      │                    │                                   │
-                              │      │ owns 8-GPU pool    ▼                                   │
-                              │      │             autobio Python API                         │
-                              │      │                    │                                   │
-                              │      │                    ▼                                   │
-                              │      │             docker run --gpus … (tool container)       │
-                              │      ▼                    │                                   │
-                              │   Storage (v1: local FS) ◀┘  inputs / config / outputs        │
-                              └──────────────────────────────────────────────────────────────┘
+                    Browser
+                       │  HTTPS
+                       ▼
+                ┌──────────────┐
+                │ Caddy (TLS)  │  external reverse proxy → forwards to the API over localhost
+                └──────┬───────┘
+                       ▼
+  ── host processes (systemd --user) ──────────────────────────────────────
+
+     FastAPI ── serves ──▶ SPA static assets (same-origin)
+        │   JSON API: cookie-session auth, run CRUD, catalog, quotas, downloads
+        ▼
+     Service layer (transport-agnostic)     ◀── imported by both API and scheduler
+        │
+        ▼
+     Scheduler ── owns the 8-GPU pool
+        │
+        ▼
+     Executor (v1: local autobio) ──▶ autobio Python API ──▶ docker run --gpus … (tool)
+        │
+        ▼
+     Storage (v1: local filesystem)   inputs / config / outputs
+
+        │  both processes connect to Postgres:
+        │    • API / service layer — read/write runs, artifacts, usage
+        │    • Scheduler — claims queued runs via FOR UPDATE SKIP LOCKED
+        ▼
+  ── Docker Compose ───────────────────────────────────────────────────────
+
+     PostgreSQL ── single source of truth + job queue (the only container)
 ```
 
-**In Docker Compose:**
-- **nginx** — serves the built SPA static assets and reverse-proxies the API.
+**Host processes (systemd `--user`), with Docker + GPU access:**
 - **FastAPI (API)** — cookie-session auth, run CRUD, tool catalog, quota checks,
-  ownership-checked downloads. A thin transport over the service layer. No Docker
-  or GPU access.
-- **PostgreSQL** — persistent volume; the single source of truth.
-
-**Host process (systemd), with Docker + GPU access:**
+  ownership-checked downloads. Serves the built SPA static assets same-origin, so
+  no separate web server is needed. A thin transport over the service layer.
 - **Scheduler** — owns the 8-GPU pool; claims queued runs; allocates whole GPUs
   exclusively; drives the `Executor`; handles crash recovery.
+
+**In Docker Compose:**
+- **PostgreSQL** — persistent volume; the single source of truth. The only
+  containerized component.
+
+**External (production):**
+- **Caddy** — terminates TLS and reverse-proxies to the API over localhost, so
+  the app is reached at `https://fold.scripps.edu` while keeping the session
+  cookie `Secure` (see [`DEPLOYMENT.md`](./DEPLOYMENT.md)). In local dev the API
+  is used directly over HTTP.
 
 The **service layer** is plain transport-agnostic Python (run lifecycle, quota
 logic, catalog sync, enqueue). It is imported by both the API and the scheduler,
@@ -187,11 +197,10 @@ Per-run directory layout:
 Downloads are always served by the API with an ownership check, so scoping is
 enforced and never bypassed by static file serving.
 
-Because the scheduler runs on the host while the API runs in a container, the
-per-run directory tree is a single location on the host that the API container
-bind-mounts: the API (via the service layer) writes `inputs/` and `config/` at
-submit time and reads `outputs/` to serve downloads, while the scheduler's
-`Executor` writes `outputs/`.
+The API and the scheduler both run on the host and share the same per-run
+directory tree directly: the API (via the service layer) writes `inputs/` and
+`config/` at submit time and reads `outputs/` to serve downloads, while the
+scheduler's `Executor` writes `outputs/`.
 
 ## Authentication
 
@@ -205,8 +214,11 @@ hardened security.
   [Admin console](#admin-console)). The first admin is seeded out-of-band
   (env var / CLI) on deploy, since with gating no one can self-approve into
   existence.
-- **Sessions:** httpOnly, secure session **cookies** for the SPA — simple and
+- **Sessions:** httpOnly session **cookies** for the SPA — simple and
   safe-enough on an intranet, and it avoids the JWT-in-`localStorage` XSS footgun.
+  In production the cookie is `Secure` (`FOLD_SESSION_HTTPS_ONLY=true`) and TLS is
+  terminated by Caddy; over plain-HTTP dev the flag is disabled so the cookie is
+  not dropped by the browser (`foldapp doctor` flags a mismatch).
 - **Future programmatic credential:** per-user **API tokens**, issued from the UI
   and checked by the same auth layer, mapping to the same `User`. Not built now,
   not precluded.

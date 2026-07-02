@@ -1,0 +1,36 @@
+# fold@Scripps — Caddy reverse proxy (TLS termination) for production.
+#
+# Caddy speaks HTTPS to browsers and forwards to the fold API on localhost, so
+# the application needs no changes: keep FOLD_SESSION_HTTPS_ONLY=true in the
+# app's .env (the session cookie is `Secure`, which requires HTTPS).
+#
+# Install: copy to /etc/caddy/Caddyfile (or `import` it), then
+#   sudo systemctl reload caddy
+
+fold.scripps.edu {
+	# FastAPI serves both the SPA and the JSON API same-origin on this port.
+	# Bind the API to 127.0.0.1 (or firewall :8000) so it can't be reached
+	# directly over plain HTTP, bypassing TLS. WebSockets are proxied as-is.
+	reverse_proxy 127.0.0.1:8000
+
+	# Compress SPA assets and JSON responses.
+	encode zstd gzip
+
+	# --- Certificates -------------------------------------------------------
+	# By default Caddy auto-obtains and renews a publicly-trusted cert via the
+	# ACME HTTP-01 challenge, which needs this host reachable from the internet
+	# on 80/443. An intranet-only host usually is NOT, so pick ONE alternative:
+	#
+	# (a) DNS-01 challenge — trusted certs for an internal-only host. Needs a
+	#     Caddy build with your DNS provider's plugin plus an API token:
+	#         tls {
+	#             dns <provider> {env.DNS_API_TOKEN}
+	#         }
+	#
+	# (b) Certificate issued by Scripps IT / an internal CA:
+	#         tls /etc/ssl/fold.scripps.edu/fullchain.pem /etc/ssl/fold.scripps.edu/key.pem
+	#
+	# (c) Caddy's own internal CA (self-signed) — fine for a pilot, but every
+	#     client must trust Caddy's root or they will see certificate warnings:
+	#         tls internal
+}

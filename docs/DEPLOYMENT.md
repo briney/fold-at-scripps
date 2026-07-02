@@ -53,10 +53,32 @@ If the post-upgrade health check fails, the upgrade stops and leaves
     foldapp rollback --db          # also restore the pre-upgrade DB snapshot
                                    # (needed when a migration is the problem)
 
-## TLS / reverse proxy
+## TLS / reverse proxy (Caddy)
 
-The app does not terminate TLS. Put the intranet reverse proxy in front of the
-API port (default 8000) and keep `FOLD_SESSION_HTTPS_ONLY=true`.
+The app does not terminate TLS. In production, put Caddy in front of the API
+port and access the app at `https://fold.scripps.edu`, keeping
+`FOLD_SESSION_HTTPS_ONLY=true` in `.env`. The session cookie is `Secure`, which
+requires HTTPS — over plain HTTP the browser silently drops it and login fails
+(the page just reloads with no error).
+
+A ready-to-adapt config is in [`deploy/Caddyfile.example`](../deploy/Caddyfile.example):
+
+    fold.scripps.edu {
+        reverse_proxy 127.0.0.1:8000
+    }
+
+Caddy speaks HTTPS to browsers and proxies to the API over localhost, so no app
+changes are needed. Intranet-only hosts usually can't use Caddy's default ACME
+HTTP-01 challenge; the example documents the alternatives (DNS-01 for trusted
+certs on an internal host, an IT-issued/internal-CA cert, or Caddy's internal CA).
+
+**Harden the origin** so the plaintext API can't be reached directly, bypassing
+TLS: firewall port 8000 to localhost, or run the API bound to localhost (the
+`fold-api` unit runs `serve --port …`, which binds `0.0.0.0` by default — add
+`--host 127.0.0.1`). Then only Caddy can reach it.
+
+For **local dev** on a host with no name/cert, set `FOLD_SESSION_HTTPS_ONLY=false`
+and use the API over `http://localhost:8000` directly.
 
 ## Single scheduler
 

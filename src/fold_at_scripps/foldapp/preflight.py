@@ -144,6 +144,48 @@ def check_linger(paths: FoldappPaths, *, runner=run) -> CheckResult:
     )
 
 
+def _read_env_flag(paths: FoldappPaths, key: str, *, default: bool) -> bool:
+    """Read a boolean ``KEY=value`` from the .env file (last wins), else default."""
+    if not paths.env_file.is_file():
+        return default
+    prefix = f"{key}="
+    value: str | None = None
+    for line in paths.env_file.read_text().splitlines():
+        stripped = line.strip()
+        if stripped.startswith(prefix):
+            value = stripped[len(prefix) :].strip().strip("\"'")
+    if value is None:
+        return default
+    return value.lower() in {"1", "true", "yes", "on"}
+
+
+def check_session_cookie(paths: FoldappPaths, *, context: str = "deploy") -> CheckResult:
+    """Session-cookie ``Secure`` flag must match the transport (HTTP dev vs TLS deploy).
+
+    A ``Secure`` cookie (``FOLD_SESSION_HTTPS_ONLY=true``) is silently dropped by
+    browsers over plain HTTP, which breaks login with no error; a non-Secure cookie
+    travels in cleartext. Warn when the setting mismatches the deployment context.
+    """
+    secure = _read_env_flag(paths, "FOLD_SESSION_HTTPS_ONLY", default=False)
+    if context == "dev":
+        if secure:
+            return CheckResult(
+                "session",
+                Status.WARN,
+                "Secure cookie over HTTP",
+                "Set FOLD_SESSION_HTTPS_ONLY=false; Secure cookie is dropped over HTTP",
+            )
+        return CheckResult("session", Status.OK, "not Secure (HTTP dev)", None)
+    if not secure:
+        return CheckResult(
+            "session",
+            Status.WARN,
+            "cookie not Secure",
+            "Set FOLD_SESSION_HTTPS_ONLY=true and put TLS in front (docs/DEPLOYMENT.md)",
+        )
+    return CheckResult("session", Status.OK, "Secure (needs TLS in front)", None)
+
+
 def run_checks(paths: FoldappPaths, *, context: str = "deploy") -> list[CheckResult]:
     """Run every check for the given context ('deploy' | 'dev')."""
     results = [
@@ -155,6 +197,7 @@ def run_checks(paths: FoldappPaths, *, context: str = "deploy") -> list[CheckRes
         check_port_free(paths, 8000),
         check_port_free(paths, 5432),
         check_env(paths),
+        check_session_cookie(paths, context=context),
     ]
     if context == "deploy":
         results.append(check_linger(paths))
