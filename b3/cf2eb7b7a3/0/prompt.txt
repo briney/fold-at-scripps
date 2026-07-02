@@ -1,0 +1,27 @@
+I ran `uv run foldapp doctor` and I get the following. Looks like port 5432 is already being used. How can I figure out what's using it and whether or not it can be safely killed?
+
+┏━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Check     ┃ Status ┃ Detail                                      ┃ Fix                          ┃
+┡━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ python    │ OK     │ Python 3.14                                 │                              │
+│ uv        │ OK     │ /home/briney/.local/bin/uv                  │                              │
+│ docker    │ OK     │ daemon reachable                            │                              │
+│ autobio   │ OK     │ /home/briney/miniforge3/envs/ai/bin/autobio │                              │
+│ gpu       │ OK     │ GPUs visible                                │                              │
+│ port:8000 │ OK     │ free                                        │                              │
+│ port:5432 │ WARN   │ in use                                      │ Ensure it is our own service │
+│ env       │ OK     │ present                                     │                              │
+│ linger    │ OK     │ enabled                                     │                              │
+└───────────┴────────┴─────────────────────────────────────────────┴──────────────────────────────┘
+
+---
+
+I created an admin user with `uv run foldapp admin create-admin`, but when I try to login, it doesn't work (the login page just reloads, no warning about the password being incorrect or anything). Diagnose and make a plan to fix
+
+---
+
+Is it worth the hassle of https if this is only going to be served/accessible on an intranet, never the public internet? Seems like the intranet would be security enough and https on top of that would be overkill.
+
+---
+
+Yes. we'll likely going to have an internal DNS name for this box (will be accessible at `fold.scripps.edu`). Let's go ahead with Caddy, but for now we can do HTTP-only (the current instance is running on a dev machine that doesn't have an internal DNS name).
