@@ -11,6 +11,7 @@ os.environ.setdefault("FOLD_SECRET_KEY", "test-secret-not-for-production")
 
 import asyncio
 from collections.abc import AsyncIterator, Iterator
+from urllib.parse import urlsplit, urlunsplit
 
 import pytest
 import pytest_asyncio
@@ -21,6 +22,59 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 import fold_at_scripps.db as _db_module
 from fold_at_scripps.config import get_settings
 from fold_at_scripps.models import Base
+
+
+def _derive_test_url(base_url: str) -> str:
+    """Return the isolated test-database URL (db name suffixed with ``_test``)."""
+    parts = urlsplit(base_url)
+    name = parts.path.lstrip("/")
+    if name.endswith("_test"):
+        return base_url
+    return urlunsplit(parts._replace(path=f"/{name}_test"))
+
+
+def _maintenance_url(base_url: str) -> str:
+    """Return a URL to the ``postgres`` maintenance DB on the same server."""
+    return urlunsplit(urlsplit(base_url)._replace(path="/postgres"))
+
+
+# Redirect ALL database access (fixtures, Alembic via migrations/env.py, the
+# scheduler-lock test) to an isolated ``*_test`` database so the suite never
+# touches — or wipes — the developer's live database. The override must be set
+# before anything reads Settings; get_settings() is cache-cleared per test.
+os.environ["FOLD_DATABASE_URL"] = _derive_test_url(get_settings().database_url)
+get_settings.cache_clear()
+
+
+async def _ensure_database(maintenance_url: str, db_name: str) -> None:
+    """Create ``db_name`` on the server if it does not already exist."""
+    engine = create_async_engine(maintenance_url, isolation_level="AUTOCOMMIT")
+    try:
+        async with engine.connect() as conn:
+            exists = await conn.scalar(
+                text("SELECT 1 FROM pg_database WHERE datname = :name"), {"name": db_name}
+            )
+            if not exists:
+                await conn.execute(text(f'CREATE DATABASE "{db_name}"'))
+    finally:
+        await engine.dispose()
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """Guard against a non-test DB and create the isolated test database."""
+    get_settings.cache_clear()
+    url = get_settings().database_url
+    db_name = urlsplit(url).path.lstrip("/")
+    if not db_name.endswith("_test"):
+        raise pytest.UsageError(
+            f"Refusing to run: integration tests must target a *_test database, but "
+            f"settings resolve to {db_name!r}. Check FOLD_DATABASE_URL / .env."
+        )
+    try:
+        asyncio.run(_ensure_database(_maintenance_url(url), db_name))
+    except (SQLAlchemyError, OSError):
+        # Server unreachable: skip creation; integration tests get skipped below.
+        pass
 
 
 @pytest.fixture(autouse=True)
