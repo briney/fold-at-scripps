@@ -1,0 +1,1 @@
+Browser login now works eith https set to false. Go ahead and diagnose the failing tests
